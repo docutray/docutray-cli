@@ -29,6 +29,9 @@
     "commands": "./dist/commands",
     "topicSeparator": " ",
     "topics": {
+      "steps": {
+        "description": "Execute and monitor processing steps"
+      },
       "types": {
         "description": "Manage document types"
       }
