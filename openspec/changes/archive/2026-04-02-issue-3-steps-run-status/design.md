@@ -11,14 +11,14 @@ The CLI wraps the DocuTray Node SDK. The SDK already exposes `client.steps.runAs
 
 **Non-Goals:**
 - Steps CRUD (list, get, create, update, delete) — blocked on API endpoints
-- Validations, webhooks, or other pending SDK features
+- Validations or other pending SDK features
 - Table output for steps (step results are arbitrary JSON, not tabular)
 
 ## Decisions
 
 1. **Follow convert.ts pattern exactly** — `steps run` mirrors the async polling approach from `convert.ts` using `status.wait()` with `onStatus` callback. This keeps the codebase consistent and leverages proven patterns.
 
-2. **Always use async polling for `steps run`** — Unlike `convert` which has both sync and async modes, steps only have `runAsync()` in the SDK. The command will always poll until completion and output the final result.
+2. **Async polling by default for `steps run`** — Unlike `convert` which has both sync and async modes, steps only have `runAsync()` in the SDK. The command polls until completion by default and outputs the final result. Users can skip polling with `--no-wait` for fire-and-forget execution.
 
 3. **`steps status` as a simple getter** — Wraps `client.steps.getStatus(executionId)` directly. Returns the raw status object as JSON.
 
@@ -27,4 +27,4 @@ The CLI wraps the DocuTray Node SDK. The SDK already exposes `client.steps.runAs
 ## Risks / Trade-offs
 
 - [Long-running steps] → Polling may run for extended time. The SDK's default `maxAttempts: 600` with `interval: 1000ms` caps at ~10 minutes. This is acceptable; users can use `steps status` to check manually if needed.
-- [No `--no-wait` flag for now] → All executions poll to completion. If users need fire-and-forget, we can add `--no-wait` later. Keeping it simple for MVP.
+- [`--no-wait` adds a second UX path] → By default, executions poll to completion, but users can opt out with `--no-wait` and check progress later via `steps status`. This adds a small amount of CLI surface area, but matches the shipped behavior and supports fire-and-forget workflows.

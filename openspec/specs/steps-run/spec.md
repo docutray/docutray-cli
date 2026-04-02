@@ -9,7 +9,7 @@ The CLI SHALL provide a `docutray steps run <step-id> <source>` command that exe
 
 #### Scenario: Run step with a URL
 - **WHEN** user runs `docutray steps run my-step https://example.com/doc.pdf`
-- **THEN** the CLI SHALL call `client.steps.runAsync()` with the URL parameter and output the result as JSON
+- **THEN** the CLI SHALL call `client.steps.runAsync()` with the URL parameter, poll until completion, and output the final `StepExecutionStatus` as JSON to stdout
 
 #### Scenario: Run step with metadata
 - **WHEN** user runs `docutray steps run my-step doc.pdf --metadata '{"key":"value"}'`

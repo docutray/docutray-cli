@@ -100,6 +100,44 @@ describe('steps run', () => {
     )
   })
 
+  it('outputs error when no API key is configured', async () => {
+    mockCreateClient.mockImplementation(() => {
+      throw new Error('No API key configured. Run "docutray login" or set DOCUTRAY_API_KEY environment variable.')
+    })
+
+    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(StepsRun.run(['my-step', 'doc.pdf'])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No API key configured'),
+    )
+    expect(exitSpy).toHaveBeenCalledWith(1)
+    exitSpy.mockRestore()
+  })
+
+  it('emits status updates to stderr during polling', async () => {
+    const waitResult = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}
+    const mockWait = vi.fn().mockImplementation(async (options: {onStatus: (s: {status: string}) => void}) => {
+      options.onStatus({status: 'PROCESSING'})
+      options.onStatus({status: 'PROCESSING'})
+      return waitResult
+    })
+    const initialStatus = {id: 'exec-1', status: 'ENQUEUED', wait: mockWait}
+    mockCreateClient.mockReturnValue({
+      steps: {runAsync: vi.fn().mockResolvedValue(initialStatus)},
+    } as any)
+
+    await StepsRun.run(['my-step', 'doc.pdf'])
+
+    expect(stderrSpy).toHaveBeenCalledWith('{"status":"PROCESSING"}\n')
+    expect(stdoutSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"status": "SUCCESS"'),
+    )
+  })
+
   it('outputs error to stderr on failure', async () => {
     mockCreateClient.mockReturnValue({
       steps: {

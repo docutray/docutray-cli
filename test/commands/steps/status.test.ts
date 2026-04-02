@@ -32,6 +32,24 @@ describe('steps status', () => {
     )
   })
 
+  it('outputs error when no API key is configured', async () => {
+    mockCreateClient.mockImplementation(() => {
+      throw new Error('No API key configured. Run "docutray login" or set DOCUTRAY_API_KEY environment variable.')
+    })
+
+    const exitSpy = vi.spyOn(StepsStatus.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(StepsStatus.run(['exec-1'])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('No API key configured'),
+    )
+    expect(exitSpy).toHaveBeenCalledWith(1)
+    exitSpy.mockRestore()
+  })
+
   it('outputs error on invalid execution ID', async () => {
     mockCreateClient.mockReturnValue({
       steps: {getStatus: vi.fn().mockRejectedValue(new Error('Not found'))},
