@@ -18,7 +18,6 @@
   "scripts": {
     "build": "tsc -b",
     "dev": "tsc -b --watch",
-    "lint": "eslint src/",
     "test": "vitest run",
     "test:watch": "vitest",
     "postpack": "rm -f oclif.manifest.json",

@@ -38,17 +38,16 @@ export default class Identify extends Command {
           : {file: readFileSync(args.source), filename: basename(args.source)}),
       }
 
-      let result
-      if (flags.async) {
-        const status = await client.identify.runAsync(params)
-        result = await status.wait({
-          onStatus(s) {
-            process.stderr.write(JSON.stringify({status: s.status}) + '\n')
-          },
-        })
-      } else {
-        result = await client.identify.run(params)
-      }
+      const result = flags.async
+        ? await (async () => {
+            const status = await client.identify.runAsync(params)
+            return status.wait({
+              onStatus(s) {
+                process.stderr.write(JSON.stringify({status: s.status}) + '\n')
+              },
+            })
+          })()
+        : await client.identify.run(params)
 
       if (flags.table && result.document_type) {
         const rows = [

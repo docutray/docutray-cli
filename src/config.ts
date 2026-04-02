@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs'
+import {chmodSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync} from 'node:fs'
 import {homedir} from 'node:os'
 import {join} from 'node:path'
 
@@ -30,6 +30,7 @@ export function readConfig(): Config {
 export function writeConfig(config: Config): void {
   mkdirSync(CONFIG_DIR, {recursive: true})
   writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2) + '\n', {mode: 0o600})
+  chmodSync(CONFIG_FILE, 0o600)
 }
 
 export function deleteConfig(): void {
