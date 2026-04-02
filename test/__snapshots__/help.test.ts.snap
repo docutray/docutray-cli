@@ -1,0 +1,251 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`help output > convert --help output matches snapshot 1`] = `
+"Convert a document to structured data using a specified document type schema. Accepts a local file path or a public URL as the source. By default, processing is synchronous — the command waits and returns the extracted data. Use --async for long-running documents to poll for completion with status updates on stderr.
+
+USAGE
+  $ docutray convert SOURCE -t <value> [--async] [--metadata <value>]
+    [--webhook-url <value>]
+
+ARGUMENTS
+  SOURCE  File path or URL to convert
+
+FLAGS
+  -t, --type=<value>         (required) Document type code to use for extraction
+                             (see: docutray types list)
+      --async                Use async processing with polling (default: false).
+                             Status updates are emitted to stderr as JSON.
+      --metadata=<value>     JSON metadata to attach to the conversion (e.g.
+                             '{"key":"value"}')
+      --webhook-url=<value>  Webhook URL to receive a POST notification when
+                             conversion completes
+
+DESCRIPTION
+  Convert a document to structured data using a specified document type schema.
+  Accepts a local file path or a public URL as the source. By default,
+  processing is synchronous — the command waits and returns the extracted data.
+  Use --async for long-running documents to poll for completion with status
+  updates on stderr.
+
+EXAMPLES
+  Convert a local PDF using a document type
+
+    $ docutray convert invoice.pdf --type electronic-invoice
+
+  Convert a document from a URL
+
+    $ docutray convert https://example.com/doc.pdf -t electronic-invoice
+
+  Use async processing with status polling
+
+    $ docutray convert invoice.pdf -t electronic-invoice --async
+
+  Convert with webhook notification on completion
+
+    $ docutray convert receipt.jpg -t receipt --webhook-url \\
+      https://example.com/hook
+
+  Attach custom metadata to the conversion
+
+    $ docutray convert invoice.pdf -t electronic-invoice --metadata \\
+      '{"ref":"order-123"}'
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/convert
+
+"
+`;
+
+exports[`help output > identify --help output matches snapshot 1`] = `
+"Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
+
+USAGE
+  $ docutray identify SOURCE [--async] [--table] [--types <value>]
+
+ARGUMENTS
+  SOURCE  File path or URL to identify
+
+FLAGS
+  --async          Use async processing with polling (default: false). Status
+                   updates are emitted to stderr as JSON.
+  --table          Output results as a formatted table instead of JSON
+  --types=<value>  Comma-separated list of document type codes to restrict
+                   identification (e.g. invoice,receipt)
+
+DESCRIPTION
+  Identify the type of a document by analyzing its content. Returns the
+  best-matching document type along with alternative matches ranked by
+  confidence score. Use --types to restrict identification to a specific set of
+  document types. Accepts a local file path or a public URL.
+
+EXAMPLES
+  Identify a local document
+
+    $ docutray identify document.pdf
+
+  Identify a document from a URL
+
+    $ docutray identify https://example.com/doc.pdf
+
+  Restrict to specific document types
+
+    $ docutray identify document.pdf --types invoice,receipt,contract
+
+  Display results as a formatted table
+
+    $ docutray identify document.pdf --table
+
+  Use async processing with status polling
+
+    $ docutray identify document.pdf --async
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/identify
+
+"
+`;
+
+exports[`help output > login --help output matches snapshot 1`] = `
+"Configure your DocuTray API key for authentication. When called without arguments, prompts interactively for the key (the only interactive command in this CLI). You can also pass the key directly as an argument for non-interactive use. Credentials are stored in ~/.config/docutray/config.json with restricted file permissions.
+
+USAGE
+  $ docutray login [API-KEY] [--base-url <value>]
+
+ARGUMENTS
+  [API-KEY]  API key to save (omit for interactive prompt)
+
+FLAGS
+  --base-url=<value>  Custom base URL for the DocuTray API (default:
+                      https://app.docutray.com)
+
+DESCRIPTION
+  Configure your DocuTray API key for authentication. When called without
+  arguments, prompts interactively for the key (the only interactive command in
+  this CLI). You can also pass the key directly as an argument for
+  non-interactive use. Credentials are stored in ~/.config/docutray/config.json
+  with restricted file permissions.
+
+EXAMPLES
+  Interactive login — prompts for your API key
+
+    $ docutray login
+
+  Non-interactive login with API key as argument
+
+    $ docutray login dt_live_abc123
+
+  Login with a custom API base URL (e.g. staging)
+
+    $ docutray login --base-url https://staging.docutray.com
+
+  Alternative: use env var instead of login (recommended for CI/CD)
+
+    DOCUTRAY_API_KEY=dt_live_abc123 docutray status
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/login
+
+"
+`;
+
+exports[`help output > steps:run --help output matches snapshot 1`] = `
+"Execute a processing step on a document. Steps are reusable processing pipelines configured in the DocuTray dashboard. By default, the command waits for the step to complete and returns the result. Use --no-wait to return the execution status immediately without polling. Accepts a local file path or a public URL as the document source.
+
+USAGE
+  $ docutray steps:run STEP-ID SOURCE [--metadata <value>] [--no-wait]
+    [--webhook-url <value>]
+
+ARGUMENTS
+  STEP-ID  Step ID to execute
+  SOURCE   File path or URL to process
+
+FLAGS
+  --metadata=<value>     JSON metadata to attach to the execution (e.g.
+                         '{"key":"value"}')
+  --no-wait              Return immediately with execution status instead of
+                         waiting for completion (default: false)
+  --webhook-url=<value>  Webhook URL to receive a POST notification when the
+                         step completes
+
+DESCRIPTION
+  Execute a processing step on a document. Steps are reusable processing
+  pipelines configured in the DocuTray dashboard. By default, the command waits
+  for the step to complete and returns the result. Use --no-wait to return the
+  execution status immediately without polling. Accepts a local file path or a
+  public URL as the document source.
+
+EXAMPLES
+  Run a step on a local file and wait for results
+
+    $ docutray steps run extract-fields invoice.pdf
+
+  Run a step on a document URL
+
+    $ docutray steps run extract-fields https://example.com/doc.pdf
+
+  Start execution and return immediately (async)
+
+    $ docutray steps run extract-fields invoice.pdf --no-wait
+
+  Attach custom metadata to the execution
+
+    $ docutray steps run extract-fields invoice.pdf --metadata \\
+      '{"ref":"order-123"}'
+
+  Receive a webhook notification on completion
+
+    $ docutray steps run extract-fields invoice.pdf --webhook-url \\
+      https://example.com/hook
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/steps/run
+
+"
+`;
+
+exports[`help output > types:list --help output matches snapshot 1`] = `
+"List available document types with pagination and search. Document types define the extraction schema used when converting documents. Results are paginated — use --page and --limit to navigate through large result sets. Use --search to filter by name.
+
+USAGE
+  $ docutray types:list [--limit <value>] [--page <value>] [--search
+    <value>] [--table]
+
+FLAGS
+  --limit=<value>   [default: 20] Number of results per page (default: 20)
+  --page=<value>    [default: 1] Page number for pagination (default: 1)
+  --search=<value>  Filter document types by name (case-insensitive substring
+                    match)
+  --table           Output results as a formatted table instead of JSON
+
+DESCRIPTION
+  List available document types with pagination and search. Document types
+  define the extraction schema used when converting documents. Results are
+  paginated — use --page and --limit to navigate through large result sets. Use
+  --search to filter by name.
+
+EXAMPLES
+  List all document types (first page, default 20 results)
+
+    $ docutray types list
+
+  Search for document types by name
+
+    $ docutray types list --search invoice
+
+  Display results as a formatted table
+
+    $ docutray types list --table
+
+  Paginate through results
+
+    $ docutray types list --limit 50 --page 2
+
+  Extract just the type codes (useful for scripting)
+
+    $ docutray types list | jq ".data[].codeType"
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/types/list
+
+"
+`;

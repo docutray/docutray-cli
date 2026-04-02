@@ -4,9 +4,13 @@ import {getApiKey, getBaseUrl, getConfigPath, maskApiKey, readConfig} from '../c
 import {outputError, outputJson} from '../output.js'
 
 export default class Status extends Command {
-  static description = 'Show current authentication status and configuration'
+  static description = `Show current authentication status and configuration. Displays whether you are authenticated, the masked API key, the credential source (environment variable or config file), the API base URL, and the config file path. Useful for verifying your setup before running commands.`
 
-  static examples = ['$ docutray status']
+  static examples = [
+    {command: '<%= config.bin %> status', description: 'Check current authentication status'},
+    {command: '<%= config.bin %> status | jq .authenticated', description: 'Check if authenticated (JSON output, useful for scripts)'},
+    {command: 'DOCUTRAY_API_KEY=dt_live_abc123 docutray status', description: 'Verify env var authentication is detected'},
+  ]
 
   async run(): Promise<void> {
     try {

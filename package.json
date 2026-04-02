@@ -1,7 +1,7 @@
 {
   "name": "@docutray/cli",
   "version": "0.1.0",
-  "description": "CLI oficial de DocuTray — procesamiento de documentos con OCR impulsado por IA",
+  "description": "Official DocuTray CLI — AI-powered document processing from the command line",
   "author": "DocuTray",
   "license": "MIT",
   "type": "module",
@@ -21,19 +21,21 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "postpack": "rm -f oclif.manifest.json",
-    "prepack": "oclif manifest && oclif readme"
+    "prepack": "oclif manifest && oclif readme",
+    "docs:generate": "oclif readme && oclif readme --multi --output-dir docs/commands"
   },
   "oclif": {
     "bin": "docutray",
     "dirname": "docutray",
     "commands": "./dist/commands",
+    "helpClass": "./dist/help",
     "topicSeparator": " ",
     "topics": {
       "steps": {
-        "description": "Execute and monitor processing steps"
+        "description": "Execute and monitor document processing steps. Steps are reusable processing pipelines that can be applied to documents for extraction, transformation, and validation."
       },
       "types": {
-        "description": "Manage document types"
+        "description": "Manage document types (extraction schemas). Document types define the fields and structure that DocuTray extracts from documents during conversion."
       }
     }
   },

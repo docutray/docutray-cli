@@ -8,15 +8,16 @@ export default class TypesGet extends Command {
     code: Args.string({description: 'Document type code', required: true}),
   }
 
-  static description = 'Get details of a document type'
+  static description = `Get the full details of a document type by its code. Returns the type name, description, field schema, and configuration. Use this to inspect a document type before converting documents or to verify type settings.`
 
   static examples = [
-    '$ docutray types get electronic-invoice',
-    '$ docutray types get electronic-invoice --table',
+    {command: '<%= config.bin %> types get electronic-invoice', description: 'Get full details of a document type'},
+    {command: '<%= config.bin %> types get electronic-invoice --table', description: 'Display details as a formatted table'},
+    {command: '<%= config.bin %> types get electronic-invoice | jq .fields', description: 'Extract just the field schema (useful for scripts)'},
   ]
 
   static flags = {
-    table: Flags.boolean({default: false, description: 'Output as table'}),
+    table: Flags.boolean({default: false, description: 'Output details as a formatted table instead of JSON'}),
   }
 
   async run(): Promise<void> {
