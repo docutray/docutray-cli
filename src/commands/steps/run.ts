@@ -12,19 +12,20 @@ export default class StepsRun extends Command {
     source: Args.string({description: 'File path or URL to process', required: true}),
   }
 
-  static description = 'Execute a processing step on a document'
+  static description = `Execute a processing step on a document. Steps are reusable processing pipelines configured in the DocuTray dashboard. By default, the command waits for the step to complete and returns the result. Use --no-wait to return the execution status immediately without polling. Accepts a local file path or a public URL as the document source.`
 
   static examples = [
-    '$ docutray steps run my-step invoice.pdf',
-    '$ docutray steps run my-step https://example.com/doc.pdf',
-    '$ docutray steps run my-step invoice.pdf --metadata \'{"key":"value"}\'',
-    '$ docutray steps run my-step invoice.pdf --no-wait',
+    {command: '<%= config.bin %> steps run extract-fields invoice.pdf', description: 'Run a step on a local file and wait for results'},
+    {command: '<%= config.bin %> steps run extract-fields https://example.com/doc.pdf', description: 'Run a step on a document URL'},
+    {command: '<%= config.bin %> steps run extract-fields invoice.pdf --no-wait', description: 'Start execution and return immediately (async)'},
+    {command: '<%= config.bin %> steps run extract-fields invoice.pdf --metadata \'{"ref":"order-123"}\'', description: 'Attach custom metadata to the execution'},
+    {command: '<%= config.bin %> steps run extract-fields invoice.pdf --webhook-url https://example.com/hook', description: 'Receive a webhook notification on completion'},
   ]
 
   static flags = {
-    metadata: Flags.string({description: 'JSON metadata to attach to the execution'}),
-    'no-wait': Flags.boolean({default: false, description: 'Return immediately without waiting for completion'}),
-    'webhook-url': Flags.string({description: 'Webhook URL for completion notification'}),
+    metadata: Flags.string({description: 'JSON metadata to attach to the execution (e.g. \'{"key":"value"}\')'}),
+    'no-wait': Flags.boolean({default: false, description: 'Return immediately with execution status instead of waiting for completion (default: false)'}),
+    'webhook-url': Flags.string({description: 'Webhook URL to receive a POST notification when the step completes'}),
   }
 
   async run(): Promise<void> {

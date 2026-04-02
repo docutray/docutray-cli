@@ -4,9 +4,12 @@ import {deleteConfig} from '../config.js'
 import {outputError, outputJson} from '../output.js'
 
 export default class Logout extends Command {
-  static description = 'Clear stored credentials'
+  static description = `Clear stored credentials by removing the local configuration file. This does not invalidate the API key itself — it only removes it from this machine. Has no effect if you are authenticating via the DOCUTRAY_API_KEY environment variable.`
 
-  static examples = ['$ docutray logout']
+  static examples = [
+    {command: '<%= config.bin %> logout', description: 'Remove stored API key from local config'},
+    {command: '<%= config.bin %> logout && docutray status', description: 'Logout and verify authentication is cleared'},
+  ]
 
   async run(): Promise<void> {
     try {

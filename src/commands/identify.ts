@@ -11,18 +11,20 @@ export default class Identify extends Command {
     source: Args.string({description: 'File path or URL to identify', required: true}),
   }
 
-  static description = 'Identify the type of a document'
+  static description = `Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.`
 
   static examples = [
-    '$ docutray identify document.pdf',
-    '$ docutray identify https://example.com/doc.pdf',
-    '$ docutray identify document.pdf --table',
+    {command: '<%= config.bin %> identify document.pdf', description: 'Identify a local document'},
+    {command: '<%= config.bin %> identify https://example.com/doc.pdf', description: 'Identify a document from a URL'},
+    {command: '<%= config.bin %> identify document.pdf --types invoice,receipt,contract', description: 'Restrict to specific document types'},
+    {command: '<%= config.bin %> identify document.pdf --table', description: 'Display results as a formatted table'},
+    {command: '<%= config.bin %> identify document.pdf --async', description: 'Use async processing with status polling'},
   ]
 
   static flags = {
-    async: Flags.boolean({default: false, description: 'Use async processing with polling'}),
-    table: Flags.boolean({default: false, description: 'Output as table'}),
-    types: Flags.string({description: 'Comma-separated list of document type codes to filter'}),
+    async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr as JSON.'}),
+    table: Flags.boolean({default: false, description: 'Output results as a formatted table instead of JSON'}),
+    types: Flags.string({description: 'Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt)'}),
   }
 
   async run(): Promise<void> {

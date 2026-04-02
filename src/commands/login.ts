@@ -9,16 +9,17 @@ export default class Login extends Command {
     'api-key': Args.string({description: 'API key to save (omit for interactive prompt)', required: false}),
   }
 
-  static description = 'Configure API key for authentication'
+  static description = `Configure your DocuTray API key for authentication. When called without arguments, prompts interactively for the key (the only interactive command in this CLI). You can also pass the key directly as an argument for non-interactive use. Credentials are stored in ~/.config/docutray/config.json with restricted file permissions.`
 
   static examples = [
-    '$ docutray login',
-    '$ docutray login dt_my-api-key',
-    '$ docutray login --base-url https://staging.docutray.com',
+    {command: '<%= config.bin %> login', description: 'Interactive login — prompts for your API key'},
+    {command: '<%= config.bin %> login dt_live_abc123', description: 'Non-interactive login with API key as argument'},
+    {command: '<%= config.bin %> login --base-url https://staging.docutray.com', description: 'Login with a custom API base URL (e.g. staging)'},
+    {command: 'DOCUTRAY_API_KEY=dt_live_abc123 docutray status', description: 'Alternative: use env var instead of login (recommended for CI/CD)'},
   ]
 
   static flags = {
-    'base-url': Flags.string({description: 'Custom base URL for the API'}),
+    'base-url': Flags.string({description: 'Custom base URL for the DocuTray API (default: https://app.docutray.com)'}),
   }
 
   async run(): Promise<void> {

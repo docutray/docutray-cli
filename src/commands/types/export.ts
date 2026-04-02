@@ -9,15 +9,17 @@ export default class TypesExport extends Command {
     code: Args.string({description: 'Document type code', required: true}),
   }
 
-  static description = 'Export a document type to JSON'
+  static description = `Export a document type definition to JSON format. By default, writes to stdout for piping or redirection. Use --output to write directly to a file. Useful for backing up type definitions, version-controlling them in Git, or migrating types between environments.`
 
   static examples = [
-    '$ docutray types export electronic-invoice',
-    '$ docutray types export electronic-invoice --output invoice-type.json',
+    {command: '<%= config.bin %> types export electronic-invoice', description: 'Export a document type to stdout'},
+    {command: '<%= config.bin %> types export electronic-invoice -o invoice-type.json', description: 'Export directly to a file'},
+    {command: '<%= config.bin %> types export electronic-invoice > backup.json', description: 'Export using shell redirection'},
+    {command: '<%= config.bin %> types export electronic-invoice | jq .', description: 'Export and pretty-print with jq'},
   ]
 
   static flags = {
-    output: Flags.string({char: 'o', description: 'Output file path'}),
+    output: Flags.string({char: 'o', description: 'Output file path. If omitted, writes to stdout.'}),
   }
 
   async run(): Promise<void> {
