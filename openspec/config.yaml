@@ -1,0 +1,48 @@
+schema: spec-driven
+
+context: |
+  # @docutray/cli - CLI oficial de DocuTray
+
+  ## Tech Stack
+  - TypeScript + oclif framework
+  - Node SDK `docutray` como dependencia core
+  - Node.js >= 20
+  - vitest para testing
+  - Distribución via npm (@docutray/cli)
+
+  ## Domain
+  CLI para interactuar con la API de DocuTray:
+  - Autenticación y gestión de API keys
+  - CRUD de document types (schemas de extracción)
+  - Conversión de documentos (OCR + extracción estructurada)
+  - Identificación automática de tipo de documento
+
+  ## Key Patterns
+  - JSON output por defecto (optimizado para agentes de IA)
+  - Sin interactividad excepto `login` — todo vía flags
+  - Reutiliza el SDK `docutray` — no reimplementar lógica de API
+  - Exit codes: 0 éxito, 1 error con JSON en stderr
+  - Auth: DOCUTRAY_API_KEY env var tiene prioridad sobre config file
+
+  ## Conventions
+  - No push directo a main — crear branch + PR
+  - Prefer editing existing files over creating new ones
+  - Avoid over-engineering — minimal necessary changes
+  - Cada comando oclif en su propio archivo en src/commands/
+
+rules:
+  proposal:
+    - Keep proposals concise and focused on the "why"
+    - Consider SDK capabilities before proposing new API logic
+    - List capabilities as New/Modified/Removed
+  design:
+    - Include explicit Non-Goals section
+    - Reference oclif patterns and conventions
+    - Consider both JSON and table output formats
+  tasks:
+    - Tasks should be completable in a single implementation session
+    - Include verification/testing tasks
+    - Order tasks by dependency (blocked items last)
+    - Break into 2-hour maximum chunks
+  specs:
+    - Use Given/When/Then format
