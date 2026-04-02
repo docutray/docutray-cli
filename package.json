@@ -1,0 +1,50 @@
+{
+  "name": "@docutray/cli",
+  "version": "0.1.0",
+  "description": "CLI oficial de DocuTray — procesamiento de documentos con OCR impulsado por IA",
+  "author": "DocuTray",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "docutray": "./bin/run.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "oclif.manifest.json"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "postpack": "rm -f oclif.manifest.json",
+    "prepack": "oclif manifest && oclif readme"
+  },
+  "oclif": {
+    "bin": "docutray",
+    "dirname": "docutray",
+    "commands": "./dist/commands",
+    "topicSeparator": " ",
+    "topics": {
+      "types": {
+        "description": "Manage document types"
+      }
+    }
+  },
+  "dependencies": {
+    "@oclif/core": "^4",
+    "docutray": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "oclif": "^4",
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
