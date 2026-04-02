@@ -1,6 +1,5 @@
 import {Command} from '@oclif/core'
 import {CommandHelp, Help as DefaultHelp} from '@oclif/core/help'
-import type * as Interfaces from '@oclif/core/interfaces'
 
 const DOCS_BASE_URL = 'https://docs.docutray.com/cli'
 

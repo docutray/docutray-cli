@@ -15,8 +15,8 @@ export default class TypesList extends Command {
   ]
 
   static flags = {
-    limit: Flags.integer({default: 20, description: 'Number of results per page (default: 20)'}),
-    page: Flags.integer({default: 1, description: 'Page number for pagination (default: 1)'}),
+    limit: Flags.integer({default: 20, description: 'Number of results per page'}),
+    page: Flags.integer({default: 1, description: 'Page number for pagination'}),
     search: Flags.string({description: 'Filter document types by name (case-insensitive substring match)'}),
     table: Flags.boolean({default: false, description: 'Output results as a formatted table instead of JSON'}),
   }

@@ -1,7 +1,10 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest'
+import {describe, expect, it, vi, beforeEach, afterEach} from 'vitest'
 import {Config} from '@oclif/core'
-import {resolve} from 'node:path'
+import {fileURLToPath} from 'node:url'
+import {resolve, dirname} from 'node:path'
 import DocuTrayHelp from '../src/help.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 describe('help output', () => {
   let stdoutData: string
@@ -18,8 +21,12 @@ describe('help output', () => {
       stdoutData += args.join(' ') + '\n'
     })
 
-    config = await Config.load({root: resolve(import.meta.dirname, '..')})
+    config = await Config.load({root: resolve(__dirname, '..')})
     help = new DocuTrayHelp(config)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('convert --help output matches snapshot', async () => {

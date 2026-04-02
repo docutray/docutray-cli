@@ -112,7 +112,6 @@ npm link
 npm run dev              # Watch mode for TypeScript compilation
 npm run build            # Compile TypeScript
 npm run test             # Run tests
-npm run lint             # Lint code
 npm run docs:generate    # Regenerate command reference docs
 ```
 

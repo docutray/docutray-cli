@@ -97,7 +97,7 @@ fi
 ### Async processing with status polling
 
 ```bash
-# Start conversion without waiting
+# Start step execution without waiting
 exec_id=$(docutray steps run extract-fields invoice.pdf --no-wait | jq -r '.id')
 
 # Poll until complete
@@ -158,6 +158,7 @@ console.log(result.extractedData);
 
 ```python
 import json
+import os
 import subprocess
 
 result = subprocess.run(
