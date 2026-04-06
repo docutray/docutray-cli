@@ -23,7 +23,7 @@ export default class StepsStatus extends Command {
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(StepsStatus)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       const client = createClient()
       const result = await client.steps.getStatus(args['execution-id'])

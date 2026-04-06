@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
 import {createClient} from '../client.js'
-import {isInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
+import {isStderrInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
 
 export default class Identify extends Command {
   static args = {
@@ -30,7 +30,7 @@ export default class Identify extends Command {
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(Identify)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       const client = createClient()
       const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
@@ -47,7 +47,7 @@ export default class Identify extends Command {
             const status = await client.identify.runAsync(params)
             return status.wait({
               onStatus(s) {
-                if (isInteractive()) {
+                if (isStderrInteractive()) {
                   process.stderr.write(`  Status: ${s.status}\n`)
                 } else {
                   process.stderr.write(JSON.stringify({status: s.status}) + '\n')

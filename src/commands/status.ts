@@ -19,7 +19,7 @@ export default class Status extends Command {
   async run(): Promise<void> {
     try {
       const {flags} = await this.parse(Status)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       const apiKey = getApiKey()
       const baseUrl = getBaseUrl()

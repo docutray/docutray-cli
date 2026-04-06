@@ -24,7 +24,7 @@ export default class TypesList extends Command {
   async run(): Promise<void> {
     try {
       const {flags} = await this.parse(TypesList)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       const client = createClient()
 
@@ -42,8 +42,8 @@ export default class TypesList extends Command {
       }))
 
       const total = (result as unknown as Record<string, unknown>).total as number | undefined
-      const count = total || result.data.length
-      const totalPages = Math.ceil(count / flags.limit)
+      const count = total ?? result.data.length
+      const totalPages = Math.max(1, Math.ceil(count / flags.limit))
       const footer = `Page ${flags.page} of ${totalPages} (${count} results)`
 
       outputList(result, rows, ['code', 'name', 'public', 'draft'], footer)

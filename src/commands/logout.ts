@@ -18,7 +18,7 @@ export default class Logout extends Command {
   async run(): Promise<void> {
     try {
       const {flags} = await this.parse(Logout)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       deleteConfig()
       outputSuccess({message: 'Logged out successfully'}, 'Logged out successfully')

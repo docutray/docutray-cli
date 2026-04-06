@@ -26,7 +26,7 @@ export default class Login extends Command {
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(Login)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       let apiKey = args['api-key']
       if (!apiKey) {

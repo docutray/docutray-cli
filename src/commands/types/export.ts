@@ -26,7 +26,7 @@ export default class TypesExport extends Command {
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(TypesExport)
-      if (flags.json) setForceJson(true)
+      setForceJson(flags.json)
 
       const client = createClient()
       const result = await client.documentTypes.get(args.code)

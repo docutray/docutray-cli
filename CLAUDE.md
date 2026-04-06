@@ -57,9 +57,12 @@ Commands with `--async` flag use SDK's `.runAsync()` which returns an object wit
 ## Development Guidelines
 
 ### Conventions
-- Output siempre en JSON por defecto, `--table` para formato humano
+- Output humano por defecto en TTY (tablas, key-value, iconos); auto-JSON cuando stdout es un pipe
+- Flag `--json` en todos los comandos para forzar JSON explícitamente
+- Usar `isInteractive()` para stdout, `isStderrInteractive()` para stderr — nunca mezclar
+- Llamar `setForceJson(flags.json)` siempre (no condicional) para evitar state leaks
 - Nunca usar prompts interactivos (excepto `login`)
-- Errores siempre en JSON a stderr
+- Errores: formato humano en TTY stderr, JSON en pipe stderr
 - Reutilizar el SDK `docutray` — no reimplementar lógica de API
 
 ### Testing pattern

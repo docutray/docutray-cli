@@ -9,7 +9,7 @@ export function isInteractive(): boolean {
   return process.stdout.isTTY === true
 }
 
-function isStderrInteractive(): boolean {
+export function isStderrInteractive(): boolean {
   if (forceJson) return false
   return process.stderr.isTTY === true
 }
