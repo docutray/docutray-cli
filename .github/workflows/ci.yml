@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npm test
+
+  package-verification:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Verify package contents
+        run: |
+          npm pack --dry-run 2>&1 | tee /tmp/pack-output.txt
+          echo "--- Package contents above ---"
+          # Fail if unexpected files are included
+          if grep -E '\.(env|secret|credential)' /tmp/pack-output.txt; then
+            echo "ERROR: Sensitive files detected in package"
+            exit 1
+          fi
+      - name: Test global install from tarball
+        run: |
+          npm pack
+          npm install -g ./docutray-cli-*.tgz
+          docutray --version
+          docutray --help

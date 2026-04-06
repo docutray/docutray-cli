@@ -1,0 +1,34 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm i -g npm@11.5.1
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Generate oclif manifest
+        run: npx oclif manifest
+      - name: Publish
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          PRERELEASE=$(echo "$VERSION" | grep -oP '(?<=-)[a-zA-Z]+' || true)
+          if [ -n "$PRERELEASE" ]; then
+            npm publish --access public --tag "$PRERELEASE" --provenance
+          else
+            npm publish --access public --provenance
+          fi

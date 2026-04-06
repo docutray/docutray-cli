@@ -4,6 +4,23 @@
   "description": "Official DocuTray CLI — AI-powered document processing from the command line",
   "author": "DocuTray",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/docutray/docutray-cli.git"
+  },
+  "homepage": "https://docs.docutray.com/cli",
+  "bugs": "https://github.com/docutray/docutray-cli/issues",
+  "keywords": [
+    "docutray",
+    "cli",
+    "document",
+    "extraction",
+    "ai",
+    "ocr"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "docutray": "./bin/run.js"
