@@ -1,7 +1,7 @@
 import {Args, Command, Flags} from '@oclif/core'
 
 import {createClient} from '../../client.js'
-import {outputError, outputJson, outputTable} from '../../output.js'
+import {outputError, outputKeyValue, setForceJson} from '../../output.js'
 
 export default class TypesGet extends Command {
   static args = {
@@ -12,35 +12,30 @@ export default class TypesGet extends Command {
 
   static examples = [
     {command: '<%= config.bin %> types get electronic-invoice', description: 'Get full details of a document type'},
-    {command: '<%= config.bin %> types get electronic-invoice --table', description: 'Display details as a formatted table'},
+    {command: '<%= config.bin %> types get electronic-invoice --json', description: 'Output full JSON (includes field schema)'},
     {command: '<%= config.bin %> types get electronic-invoice | jq .fields', description: 'Extract just the field schema (useful for scripts)'},
   ]
 
   static flags = {
-    table: Flags.boolean({default: false, description: 'Output details as a formatted table instead of JSON'}),
+    json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
   }
 
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(TypesGet)
-      const client = createClient()
+      if (flags.json) setForceJson(true)
 
+      const client = createClient()
       const result = await client.documentTypes.get(args.code)
 
-      if (flags.table) {
-        outputTable(
-          [{
-            code: result.codeType,
-            description: result.description || '',
-            draft: result.isDraft ? 'yes' : 'no',
-            name: result.name,
-            public: result.isPublic ? 'yes' : 'no',
-          }],
-          ['code', 'name', 'description', 'public', 'draft'],
-        )
-      } else {
-        outputJson(result)
-      }
+      outputKeyValue(result, [
+        {key: 'Code', value: result.codeType},
+        {key: 'Name', value: result.name},
+        {key: 'Description', value: result.description || '(none)'},
+        {key: 'Public', value: result.isPublic ? 'yes' : 'no'},
+        {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
+        {key: 'Fields', value: (result as unknown as Record<string, unknown>).fields ? `${((result as unknown as Record<string, unknown>).fields as unknown[]).length} fields` : '0 fields'},
+      ])
     } catch (error) {
       outputError(error)
       this.exit(1)
