@@ -16,8 +16,14 @@ describe('parseJsonFlag', () => {
     expect(parseJsonFlag('{"key":"value"}', '--metadata')).toEqual({key: 'value'})
   })
 
-  it('parses JSON arrays', () => {
-    expect(parseJsonFlag('[1,2,3]', '--metadata')).toEqual([1, 2, 3])
+  it('rejects JSON arrays', () => {
+    expect(() => parseJsonFlag('[1,2,3]', '--metadata')).toThrow('--metadata must be a JSON object')
+  })
+
+  it('rejects JSON primitives', () => {
+    expect(() => parseJsonFlag('"hello"', '--metadata')).toThrow('--metadata must be a JSON object')
+    expect(() => parseJsonFlag('42', '--metadata')).toThrow('--metadata must be a JSON object')
+    expect(() => parseJsonFlag('null', '--metadata')).toThrow('--metadata must be a JSON object')
   })
 
   it('throws on invalid JSON with flag name and value', () => {
@@ -36,6 +42,10 @@ describe('validateUrl', () => {
 
   it('accepts valid http URL', () => {
     expect(validateUrl('http://localhost:3000/hook', '--webhook-url')).toBe('http://localhost:3000/hook')
+  })
+
+  it('returns original URL without normalization', () => {
+    expect(validateUrl('https://example.com', '--webhook-url')).toBe('https://example.com')
   })
 
   it('throws on invalid URL', () => {

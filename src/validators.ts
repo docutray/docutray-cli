@@ -2,9 +2,19 @@ import {existsSync, statSync} from 'node:fs'
 
 export function parseJsonFlag(value: string, flagName: string): Record<string, unknown> {
   try {
-    return JSON.parse(value)
-  } catch {
-    throw new Error(`Invalid JSON in ${flagName}: ${value}`)
+    const parsed: unknown = JSON.parse(value)
+
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error(`${flagName} must be a JSON object`)
+    }
+
+    return parsed as Record<string, unknown>
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON in ${flagName}: ${value}`)
+    }
+
+    throw error
   }
 }
 
@@ -15,7 +25,7 @@ export function validateUrl(value: string, flagName: string): string {
       throw new Error(`${flagName} must use http or https protocol`)
     }
 
-    return url.toString()
+    return value
   } catch (error) {
     if (error instanceof TypeError) {
       throw new Error(`Invalid URL in ${flagName}: ${value}`)

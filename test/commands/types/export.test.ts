@@ -6,15 +6,17 @@ vi.mock('../../../src/client.js', () => ({
 
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(() => false),
+  statSync: vi.fn(() => ({isDirectory: () => false})),
   writeFileSync: vi.fn(),
 }))
 
-import {existsSync} from 'node:fs'
+import {existsSync, statSync} from 'node:fs'
 import {createClient} from '../../../src/client.js'
 import TypesExport from '../../../src/commands/types/export.js'
 
 const mockCreateClient = vi.mocked(createClient)
 const mockExistsSync = vi.mocked(existsSync)
+const mockStatSync = vi.mocked(statSync)
 
 function mockClient() {
   const client = {
@@ -61,5 +63,14 @@ describe('types export --force', () => {
     mockExistsSync.mockReturnValue(false)
     await TypesExport.run(['invoice', '-o', 'new.json'])
     expect(stdoutSpy).toHaveBeenCalled()
+  })
+
+  it('rejects directory as output path', async () => {
+    mockClient()
+    mockExistsSync.mockReturnValue(true)
+    mockStatSync.mockReturnValue({isDirectory: () => true} as any)
+    await expect(TypesExport.run(['invoice', '-o', './some-dir'])).rejects.toThrow('EXIT')
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Output path is a directory: ./some-dir'))
+    exitSpy.mockRestore()
   })
 })

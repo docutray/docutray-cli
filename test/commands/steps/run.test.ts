@@ -88,7 +88,7 @@ describe('steps run', () => {
 
     expect(client.steps.runAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        webhookUrl: 'https://hook.example.com/',
+        webhookUrl: 'https://hook.example.com',
       }),
     )
   })

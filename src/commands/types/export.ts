@@ -1,5 +1,5 @@
 import {Args, Flags} from '@oclif/core'
-import {existsSync, writeFileSync} from 'node:fs'
+import {existsSync, statSync, writeFileSync} from 'node:fs'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -34,6 +34,10 @@ export default class TypesExport extends BaseCommand {
       const result = await client.documentTypes.get(args.code)
 
       if (flags.output) {
+        if (existsSync(flags.output) && statSync(flags.output).isDirectory()) {
+          throw new Error(`Output path is a directory: ${flags.output}`)
+        }
+
         if (!flags.force && existsSync(flags.output)) {
           throw new Error(`File already exists: ${flags.output}. Use --force to overwrite.`)
         }
