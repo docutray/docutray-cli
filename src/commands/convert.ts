@@ -1,12 +1,13 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import type {ConvertParams} from 'docutray'
 import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
+import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
 import {isStderrInteractive, outputError, outputJson, setForceJson} from '../output.js'
 
-export default class Convert extends Command {
+export default class Convert extends BaseCommand {
   static args = {
     source: Args.string({description: 'File path or URL to convert', required: true}),
   }
@@ -30,10 +31,10 @@ export default class Convert extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {args, flags} = await this.parse(Convert)
-      setForceJson(flags.json)
+    const {args, flags} = await this.parse(Convert)
+    setForceJson(flags.json)
 
+    try {
       const client = createClient()
       const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
 

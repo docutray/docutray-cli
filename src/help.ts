@@ -37,4 +37,8 @@ export default class DocuTrayHelp extends DefaultHelp {
   protected formatCommand(command: Command.Loadable): string {
     return this.getCommandHelpClass(command).generate()
   }
+
+  getCommandHelpText(command: Command.Loadable): string {
+    return this.formatCommand(command)
+  }
 }

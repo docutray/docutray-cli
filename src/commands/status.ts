@@ -1,9 +1,10 @@
-import {Command, Flags} from '@oclif/core'
+import {Flags} from '@oclif/core'
 
+import {BaseCommand} from '../base-command.js'
 import {getApiKey, getBaseUrl, getConfigPath, maskApiKey, readConfig} from '../config.js'
 import {outputError, outputKeyValue, setForceJson} from '../output.js'
 
-export default class Status extends Command {
+export default class Status extends BaseCommand {
   static description = `Show current authentication status and configuration. Displays whether you are authenticated, the masked API key, the credential source (environment variable or config file), the API base URL, and the config file path. Useful for verifying your setup before running commands.`
 
   static examples = [
@@ -17,10 +18,10 @@ export default class Status extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {flags} = await this.parse(Status)
-      setForceJson(flags.json)
+    const {flags} = await this.parse(Status)
+    setForceJson(flags.json)
 
+    try {
       const apiKey = getApiKey()
       const baseUrl = getBaseUrl()
       const config = readConfig()
