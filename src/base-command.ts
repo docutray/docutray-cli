@@ -1,6 +1,6 @@
 import {Command, Errors} from '@oclif/core'
-import {Help} from '@oclif/core/help'
 
+import DocuTrayHelp from './help.js'
 import {isStderrInteractive, outputError} from './output.js'
 
 export abstract class BaseCommand extends Command {
@@ -10,21 +10,23 @@ export abstract class BaseCommand extends Command {
       (err.message.includes('required arg') ||
         err.message.includes('required flag'))
 
-    if (isMissingInput && isStderrInteractive()) {
-      process.stderr.write(`\n\u2717 Error: ${err.message}\n\n`)
+    if (isMissingInput) {
+      if (isStderrInteractive()) {
+        process.stderr.write(`\n\u2717 Error: ${err.message}\n\n`)
 
-      const help = new Help(this.config, {all: false})
-      const cmd = this.config.findCommand(this.id!)
-      if (cmd) {
-        await help.showCommandHelp(cmd)
+        if (this.id) {
+          const help = new DocuTrayHelp(this.config, {all: false})
+          const cmd = this.config.findCommand(this.id)
+          if (cmd) {
+            process.stderr.write(help.getCommandHelpText(cmd) + '\n')
+          }
+        }
+      } else {
+        outputError(err)
       }
 
       this.exit(1)
-    }
-
-    if (isMissingInput) {
-      outputError(err)
-      this.exit(1)
+      return
     }
 
     throw err
