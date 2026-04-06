@@ -2,7 +2,7 @@ import {Args, Command, Flags} from '@oclif/core'
 import {writeFileSync} from 'node:fs'
 
 import {createClient} from '../../client.js'
-import {outputError, outputJson} from '../../output.js'
+import {outputError, outputJson, outputSuccess, setForceJson} from '../../output.js'
 
 export default class TypesExport extends Command {
   static args = {
@@ -19,19 +19,22 @@ export default class TypesExport extends Command {
   ]
 
   static flags = {
+    json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     output: Flags.string({char: 'o', description: 'Output file path. If omitted, writes to stdout.'}),
   }
 
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(TypesExport)
-      const client = createClient()
+      setForceJson(flags.json)
 
+      const client = createClient()
       const result = await client.documentTypes.get(args.code)
 
       if (flags.output) {
         writeFileSync(flags.output, JSON.stringify(result, null, 2) + '\n')
-        outputJson({exported: flags.output, code: result.codeType})
+        const data = {exported: flags.output, code: result.codeType}
+        outputSuccess(data, `Exported ${result.codeType} to ${flags.output}`)
       } else {
         outputJson(result)
       }

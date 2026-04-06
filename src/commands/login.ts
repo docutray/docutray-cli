@@ -2,7 +2,7 @@ import {Args, Command, Flags} from '@oclif/core'
 import * as readline from 'node:readline'
 
 import {getConfigPath, maskApiKey, readConfig, writeConfig} from '../config.js'
-import {outputError, outputJson} from '../output.js'
+import {outputError, outputSuccess, setForceJson} from '../output.js'
 
 export default class Login extends Command {
   static args = {
@@ -12,7 +12,7 @@ export default class Login extends Command {
   static description = `Configure your DocuTray API key for authentication. When called without arguments, prompts interactively for the key (the only interactive command in this CLI). You can also pass the key directly as an argument for non-interactive use. Credentials are stored in ~/.config/docutray/config.json with restricted file permissions.`
 
   static examples = [
-    {command: '<%= config.bin %> login', description: 'Interactive login — prompts for your API key'},
+    {command: '<%= config.bin %> login', description: 'Interactive login \u2014 prompts for your API key'},
     {command: '<%= config.bin %> login dt_live_abc123', description: 'Non-interactive login with API key as argument'},
     {command: '<%= config.bin %> login --base-url https://staging.docutray.com', description: 'Login with a custom API base URL (e.g. staging)'},
     {command: 'DOCUTRAY_API_KEY=dt_live_abc123 docutray status', description: 'Alternative: use env var instead of login (recommended for CI/CD)'},
@@ -20,11 +20,13 @@ export default class Login extends Command {
 
   static flags = {
     'base-url': Flags.string({description: 'Custom base URL for the DocuTray API (default: https://app.docutray.com)'}),
+    json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
   }
 
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(Login)
+      setForceJson(flags.json)
 
       let apiKey = args['api-key']
       if (!apiKey) {
@@ -69,12 +71,14 @@ export default class Login extends Command {
 
       writeConfig(config)
 
-      outputJson({
+      const data = {
         message: 'Login successful',
         apiKey: maskApiKey(config.apiKey),
         configPath: getConfigPath(),
         ...(config.baseUrl && {baseUrl: config.baseUrl}),
-      })
+      }
+
+      outputSuccess(data, `Login successful (${maskApiKey(config.apiKey)})`)
     } catch (error) {
       outputError(error)
       this.exit(1)

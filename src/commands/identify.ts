@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
 import {createClient} from '../client.js'
-import {outputError, outputJson, outputTable} from '../output.js'
+import {isStderrInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
 
 export default class Identify extends Command {
   static args = {
@@ -17,19 +17,21 @@ export default class Identify extends Command {
     {command: '<%= config.bin %> identify document.pdf', description: 'Identify a local document'},
     {command: '<%= config.bin %> identify https://example.com/doc.pdf', description: 'Identify a document from a URL'},
     {command: '<%= config.bin %> identify document.pdf --types invoice,receipt,contract', description: 'Restrict to specific document types'},
-    {command: '<%= config.bin %> identify document.pdf --table', description: 'Display results as a formatted table'},
+    {command: '<%= config.bin %> identify document.pdf --json', description: 'Force JSON output'},
     {command: '<%= config.bin %> identify document.pdf --async', description: 'Use async processing with status polling'},
   ]
 
   static flags = {
-    async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr as JSON.'}),
-    table: Flags.boolean({default: false, description: 'Output results as a formatted table instead of JSON'}),
+    async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr.'}),
+    json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     types: Flags.string({description: 'Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt)'}),
   }
 
   async run(): Promise<void> {
     try {
       const {args, flags} = await this.parse(Identify)
+      setForceJson(flags.json)
+
       const client = createClient()
       const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
 
@@ -45,22 +47,26 @@ export default class Identify extends Command {
             const status = await client.identify.runAsync(params)
             return status.wait({
               onStatus(s) {
-                process.stderr.write(JSON.stringify({status: s.status}) + '\n')
+                if (isStderrInteractive()) {
+                  process.stderr.write(`  Status: ${s.status}\n`)
+                } else {
+                  process.stderr.write(JSON.stringify({status: s.status}) + '\n')
+                }
               },
             })
           })()
         : await client.identify.run(params)
 
-      if (flags.table && result.document_type) {
+      if (result.document_type) {
         const rows = [
           {code: result.document_type.code, confidence: result.document_type.confidence, name: result.document_type.name},
-          ...(result.alternatives || []).map((alt) => ({
+          ...(result.alternatives || []).map((alt: {code: string; confidence: number; name: string}) => ({
             code: alt.code,
             confidence: alt.confidence,
             name: alt.name,
           })),
         ]
-        outputTable(rows, ['code', 'name', 'confidence'])
+        outputList(result, rows, ['code', 'name', 'confidence'])
       } else {
         outputJson(result)
       }
