@@ -1,12 +1,13 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import type {StepsRunParams} from 'docutray'
 import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
+import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {isStderrInteractive, outputError, outputJson, setForceJson} from '../../output.js'
 
-export default class StepsRun extends Command {
+export default class StepsRun extends BaseCommand {
   static args = {
     'step-id': Args.string({description: 'Step ID to execute', required: true}),
     source: Args.string({description: 'File path or URL to process', required: true}),
@@ -30,10 +31,10 @@ export default class StepsRun extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {args, flags} = await this.parse(StepsRun)
-      setForceJson(flags.json)
+    const {args, flags} = await this.parse(StepsRun)
+    setForceJson(flags.json)
 
+    try {
       const client = createClient()
       const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
 

@@ -1,10 +1,11 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import {writeFileSync} from 'node:fs'
 
+import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputJson, outputSuccess, setForceJson} from '../../output.js'
 
-export default class TypesExport extends Command {
+export default class TypesExport extends BaseCommand {
   static args = {
     code: Args.string({description: 'Document type code', required: true}),
   }
@@ -24,10 +25,10 @@ export default class TypesExport extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {args, flags} = await this.parse(TypesExport)
-      setForceJson(flags.json)
+    const {args, flags} = await this.parse(TypesExport)
+    setForceJson(flags.json)
 
+    try {
       const client = createClient()
       const result = await client.documentTypes.get(args.code)
 

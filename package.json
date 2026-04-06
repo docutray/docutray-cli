@@ -29,6 +29,9 @@
     "dirname": "docutray",
     "commands": "./dist/commands",
     "helpClass": "./dist/help",
+    "plugins": [
+      "@oclif/plugin-autocomplete"
+    ],
     "topicSeparator": " ",
     "topics": {
       "steps": {
@@ -41,6 +44,7 @@
   },
   "dependencies": {
     "@oclif/core": "^4",
+    "@oclif/plugin-autocomplete": "^3.2.45",
     "docutray": "^0.1.0"
   },
   "devDependencies": {

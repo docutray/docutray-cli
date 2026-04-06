@@ -1,12 +1,13 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import type {IdentifyParams} from 'docutray'
 import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
+import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
 import {isStderrInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
 
-export default class Identify extends Command {
+export default class Identify extends BaseCommand {
   static args = {
     source: Args.string({description: 'File path or URL to identify', required: true}),
   }
@@ -28,10 +29,10 @@ export default class Identify extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {args, flags} = await this.parse(Identify)
-      setForceJson(flags.json)
+    const {args, flags} = await this.parse(Identify)
+    setForceJson(flags.json)
 
+    try {
       const client = createClient()
       const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
 

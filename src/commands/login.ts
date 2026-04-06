@@ -1,10 +1,11 @@
-import {Args, Command, Flags} from '@oclif/core'
+import {Args, Flags} from '@oclif/core'
 import * as readline from 'node:readline'
 
+import {BaseCommand} from '../base-command.js'
 import {getConfigPath, maskApiKey, readConfig, writeConfig} from '../config.js'
 import {outputError, outputSuccess, setForceJson} from '../output.js'
 
-export default class Login extends Command {
+export default class Login extends BaseCommand {
   static args = {
     'api-key': Args.string({description: 'API key to save (omit for interactive prompt)', required: false}),
   }
@@ -24,10 +25,10 @@ export default class Login extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {args, flags} = await this.parse(Login)
-      setForceJson(flags.json)
+    const {args, flags} = await this.parse(Login)
+    setForceJson(flags.json)
 
+    try {
       let apiKey = args['api-key']
       if (!apiKey) {
         apiKey = await new Promise<string>((resolve) => {

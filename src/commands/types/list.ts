@@ -1,9 +1,10 @@
-import {Command, Flags} from '@oclif/core'
+import {Flags} from '@oclif/core'
 
+import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputList, setForceJson} from '../../output.js'
 
-export default class TypesList extends Command {
+export default class TypesList extends BaseCommand {
   static description = `List available document types with pagination and search. Document types define the extraction schema used when converting documents. Results are paginated \u2014 use --page and --limit to navigate through large result sets. Use --search to filter by name.`
 
   static examples = [
@@ -22,10 +23,10 @@ export default class TypesList extends Command {
   }
 
   async run(): Promise<void> {
-    try {
-      const {flags} = await this.parse(TypesList)
-      setForceJson(flags.json)
+    const {flags} = await this.parse(TypesList)
+    setForceJson(flags.json)
 
+    try {
       const client = createClient()
 
       const result = await client.documentTypes.list({
