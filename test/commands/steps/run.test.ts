@@ -6,13 +6,17 @@ vi.mock('../../../src/client.js', () => ({
 }))
 
 vi.mock('node:fs', () => ({
+  existsSync: vi.fn(() => true),
   readFileSync: vi.fn(() => Buffer.from('fake-pdf-content')),
+  statSync: vi.fn(() => ({isDirectory: () => false})),
 }))
 
+import {existsSync} from 'node:fs'
 import {createClient} from '../../../src/client.js'
 import StepsRun from '../../../src/commands/steps/run.js'
 
 const mockCreateClient = vi.mocked(createClient)
+const mockExistsSync = vi.mocked(existsSync)
 
 function mockClient(waitResult: Record<string, unknown> = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}) {
   const mockWait = vi.fn().mockResolvedValue(waitResult)
@@ -155,6 +159,40 @@ describe('steps run', () => {
       expect.stringContaining('Step not found'),
     )
     expect(exitSpy).toHaveBeenCalledWith(1)
+    exitSpy.mockRestore()
+  })
+
+  it('rejects malformed JSON in --metadata', async () => {
+    mockClient()
+    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(StepsRun.run(['my-step', 'doc.pdf', '--metadata', 'not-json'])).rejects.toThrow('EXIT')
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid JSON in --metadata'))
+    exitSpy.mockRestore()
+  })
+
+  it('rejects invalid --webhook-url', async () => {
+    mockClient()
+    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(StepsRun.run(['my-step', 'doc.pdf', '--webhook-url', 'not-a-url'])).rejects.toThrow('EXIT')
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid URL in --webhook-url'))
+    exitSpy.mockRestore()
+  })
+
+  it('rejects nonexistent source file', async () => {
+    mockClient()
+    mockExistsSync.mockReturnValue(false)
+    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(StepsRun.run(['my-step', 'nonexistent.pdf'])).rejects.toThrow('EXIT')
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('File not found: nonexistent.pdf'))
     exitSpy.mockRestore()
   })
 })

@@ -6,6 +6,7 @@ import {basename} from 'node:path'
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {isStderrInteractive, outputError, outputJson, setForceJson} from '../../output.js'
+import {parseJsonFlag, validateSource, validateUrl} from '../../validators.js'
 
 export default class StepsRun extends BaseCommand {
   static args = {
@@ -36,12 +37,12 @@ export default class StepsRun extends BaseCommand {
 
     try {
       const client = createClient()
-      const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
+      const {isUrl} = validateSource(args.source)
 
       const params: StepsRunParams = {
         stepId: args['step-id'],
-        ...(flags['webhook-url'] && {webhookUrl: flags['webhook-url']}),
-        ...(flags.metadata && {documentMetadata: JSON.parse(flags.metadata)}),
+        ...(flags['webhook-url'] && {webhookUrl: validateUrl(flags['webhook-url'], '--webhook-url')}),
+        ...(flags.metadata && {documentMetadata: parseJsonFlag(flags.metadata, '--metadata')}),
         ...(isUrl
           ? {url: args.source}
           : {file: readFileSync(args.source), filename: basename(args.source)}),
