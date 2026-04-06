@@ -3,3 +3,4 @@ dist/
 oclif.manifest.json
 *.tsbuildinfo
 .DS_Store
+.claude/settings.local.json
