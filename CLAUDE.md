@@ -8,52 +8,51 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Essential Commands
 
-### Development
 ```bash
-npm run dev             # Run CLI in development mode
 npm run build           # Compile TypeScript
+npm run dev             # Run CLI in development mode (ts-node)
+npm run test            # Run tests (vitest run)
+npm run test:watch      # Run tests in watch mode
 npm run lint            # Lint code
-npm run test            # Run tests
+npm run docs:generate   # Generate CLI command reference docs
+```
+
+### Running a single test
+```bash
+npx vitest run test/commands/steps/run.test.ts
 ```
 
 ### Testing the CLI locally
 ```bash
-npm link                # Link globally for testing
+npm link                # Link globally
 docutray status         # Test a command
 ```
 
 ## Architecture
 
-### Tech Stack
-- TypeScript + [oclif](https://oclif.io/) framework
-- Node SDK `docutray` como dependencia core
-- Node.js >= 20
+- **TypeScript 5** + **oclif 4** framework, targeting ES2022 / Node.js >= 20
+- **Node SDK `docutray`** as the sole API layer — CLI never calls the API directly
+- **vitest 3** for testing
 
-### Project Structure
-```
-src/
-├── commands/           # oclif commands (one file per command)
-│   ├── login.ts
-│   ├── logout.ts
-│   ├── status.ts
-│   ├── convert.ts
-│   ├── identify.ts
-│   └── types/
-│       ├── list.ts
-│       ├── get.ts
-│       ├── create.ts
-│       ├── update.ts
-│       ├── delete.ts
-│       └── export.ts
-├── config.ts           # Config file management (~/.config/docutray/)
-└── output.ts           # JSON/table formatting helpers
-```
+### How commands work
 
-### Key Design Decisions
-- **JSON output por defecto** — optimizado para agentes de IA, no humanos
-- **Sin interactividad** excepto `login` — todo vía flags
-- **Exit codes claros** — 0 éxito, 1 error con JSON en stderr
-- **Auth**: `DOCUTRAY_API_KEY` env var tiene prioridad sobre config file
+Each file in `src/commands/` is an oclif Command class. oclif auto-discovers commands from the compiled `dist/commands/` directory. Topic subcommands live in subdirectories (`types/`, `steps/`).
+
+All commands follow the same pattern:
+1. Get a `DocuTray` client via `createClient()` (from `src/client.ts`) — checks `DOCUTRAY_API_KEY` env var first, then `~/.config/docutray/config.json`
+2. Call the SDK method (e.g., `client.convert.run()`, `client.steps.runAsync()`)
+3. Output result via `outputJson()` to stdout or `outputError()` to stderr (from `src/output.ts`)
+
+### Key shared modules
+
+- **`src/client.ts`** — Factory that creates a `DocuTray` SDK instance from env/config credentials
+- **`src/config.ts`** — Manages `~/.config/docutray/config.json` (read/write/delete, file perms 0o600)
+- **`src/output.ts`** — `outputJson()`, `outputError()`, `outputTable()` helpers
+- **`src/help.ts`** — Custom oclif help class that appends "Learn more" doc links to each command
+
+### Async pattern
+
+Commands with `--async` flag use SDK's `.runAsync()` which returns an object with `.wait({onStatus})`. Status updates are emitted to stderr during polling; final result goes to stdout as JSON.
 
 ## Development Guidelines
 
@@ -62,7 +61,13 @@ src/
 - Nunca usar prompts interactivos (excepto `login`)
 - Errores siempre en JSON a stderr
 - Reutilizar el SDK `docutray` — no reimplementar lógica de API
-- Tests con vitest
+
+### Testing pattern
+Tests mock `createClient` and spy on `process.stdout/stderr.write` to capture output. Commands are invoked via their static `.run()` method:
+```typescript
+vi.mock('../../../src/client.js', () => ({createClient: vi.fn()}))
+await StepsRun.run(['step-id', 'file.pdf', '--no-wait'])
+```
 
 ### Git
 - No push directo a main — crear branch + PR
