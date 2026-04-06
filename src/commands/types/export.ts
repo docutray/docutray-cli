@@ -1,5 +1,5 @@
 import {Args, Flags} from '@oclif/core'
-import {writeFileSync} from 'node:fs'
+import {existsSync, writeFileSync} from 'node:fs'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -20,6 +20,7 @@ export default class TypesExport extends BaseCommand {
   ]
 
   static flags = {
+    force: Flags.boolean({default: false, description: 'Overwrite existing file'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     output: Flags.string({char: 'o', description: 'Output file path. If omitted, writes to stdout.'}),
   }
@@ -33,6 +34,10 @@ export default class TypesExport extends BaseCommand {
       const result = await client.documentTypes.get(args.code)
 
       if (flags.output) {
+        if (!flags.force && existsSync(flags.output)) {
+          throw new Error(`File already exists: ${flags.output}. Use --force to overwrite.`)
+        }
+
         writeFileSync(flags.output, JSON.stringify(result, null, 2) + '\n')
         const data = {exported: flags.output, code: result.codeType}
         outputSuccess(data, `Exported ${result.codeType} to ${flags.output}`)

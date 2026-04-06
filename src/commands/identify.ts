@@ -6,6 +6,7 @@ import {basename} from 'node:path'
 import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
 import {isStderrInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
+import {validateSource} from '../validators.js'
 
 export default class Identify extends BaseCommand {
   static args = {
@@ -34,7 +35,7 @@ export default class Identify extends BaseCommand {
 
     try {
       const client = createClient()
-      const isUrl = args.source.startsWith('http://') || args.source.startsWith('https://')
+      const {isUrl} = validateSource(args.source)
 
       const params: IdentifyParams = {
         ...(flags.types && {documentTypeCodeOptions: flags.types.split(',').map((t) => t.trim())}),
