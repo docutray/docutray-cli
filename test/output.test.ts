@@ -62,6 +62,19 @@ describe('output', () => {
         expect.stringContaining('"status": 404'),
       )
     })
+
+    it('outputs JSON to stderr when forceJson is true even if TTY', () => {
+      const original = process.stderr.isTTY
+      Object.defineProperty(process.stderr, 'isTTY', {value: true, writable: true})
+      setForceJson(true)
+
+      outputError(new Error('forced json error'))
+      expect(stderrSpy).toHaveBeenCalledWith(
+        expect.stringContaining('"error": "forced json error"'),
+      )
+
+      Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
+    })
   })
 
   describe('outputKeyValue', () => {

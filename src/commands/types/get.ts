@@ -34,7 +34,7 @@ export default class TypesGet extends Command {
         {key: 'Description', value: result.description || '(none)'},
         {key: 'Public', value: result.isPublic ? 'yes' : 'no'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
-        {key: 'Fields', value: (result as unknown as Record<string, unknown>).fields ? `${((result as unknown as Record<string, unknown>).fields as unknown[]).length} fields` : '0 fields'},
+        {key: 'Fields', value: `${('fields' in result && Array.isArray(result.fields) ? result.fields.length : 0)} fields`},
       ])
     } catch (error) {
       outputError(error)

@@ -10,6 +10,7 @@ export function isInteractive(): boolean {
 }
 
 function isStderrInteractive(): boolean {
+  if (forceJson) return false
   return process.stderr.isTTY === true
 }
 
