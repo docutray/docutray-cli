@@ -13,7 +13,6 @@ npm run build           # Compile TypeScript
 npm run dev             # Run CLI in development mode (ts-node)
 npm run test            # Run tests (vitest run)
 npm run test:watch      # Run tests in watch mode
-npm run lint            # Lint code
 npm run docs:generate   # Generate CLI command reference docs
 ```
 
@@ -75,3 +74,11 @@ await StepsRun.run(['step-id', 'file.pdf', '--no-wait'])
 ### Git
 - No push directo a main — crear branch + PR
 - Conventional commits en español o inglés
+
+## CI/CD & Publishing
+
+- **Package**: `@docutray/cli` publicado en npm con `--access public`
+- **CI** (`.github/workflows/ci.yml`): Corre en push a `main`/`feat/**` y PRs a `main`. Test matrix Node 20/22, build, y verificación de package (pack + global install test)
+- **Publish** (`.github/workflows/publish.yml`): Se dispara al crear un GitHub Release con tag `v*`. Usa OIDC Trusted Publishing (sin npm tokens en secrets). Valida que el tag coincida con la versión en `package.json`. Soporta prerelease tags (`v0.2.0-beta.1` → npm tag `beta`)
+- **Release flow**: bump version en `package.json` → commit → `gh release create v0.X.Y`
+- **No hay script `lint`** — no incluir pasos de lint en CI ni en validaciones locales
