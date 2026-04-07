@@ -1,6 +1,6 @@
 {
   "name": "@docutray/cli",
-  "version": "0.1.1-beta.1",
+  "version": "0.1.2",
   "description": "Official DocuTray CLI — AI-powered document processing from the command line",
   "author": "DocuTray",
   "license": "MIT",
@@ -39,7 +39,7 @@
     "test:watch": "vitest",
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif manifest && oclif readme",
-    "docs:generate": "oclif readme && oclif readme --multi --output-dir docs/commands"
+    "docs:generate": "oclif readme --multi --output-dir docs/commands && sed -i '' 's/^# Command Topics/## Command Topics/' README.md"
   },
   "oclif": {
     "bin": "docutray",

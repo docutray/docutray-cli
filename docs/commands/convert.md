@@ -11,15 +11,15 @@ Convert a document to structured data using a specified document type schema. Ac
 
 ```
 USAGE
-  $ docutray convert SOURCE -t <value> [--async] [--metadata <value>] [--webhook-url <value>]
+  $ docutray convert SOURCE -t <value> [--async] [--json] [--metadata <value>] [--webhook-url <value>]
 
 ARGUMENTS
   SOURCE  File path or URL to convert
 
 FLAGS
   -t, --type=<value>         (required) Document type code to use for extraction (see: docutray types list)
-      --async                Use async processing with polling (default: false). Status updates are emitted to stderr as
-                             JSON.
+      --async                Use async processing with polling (default: false). Status updates are emitted to stderr.
+      --json                 Output as JSON (default when piped)
       --metadata=<value>     JSON metadata to attach to the conversion (e.g. '{"key":"value"}')
       --webhook-url=<value>  Webhook URL to receive a POST notification when conversion completes
 
@@ -52,3 +52,5 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/convert
 ```
+
+_See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/convert.ts)_

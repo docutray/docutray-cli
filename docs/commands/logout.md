@@ -11,7 +11,10 @@ Clear stored credentials by removing the local configuration file. This does not
 
 ```
 USAGE
-  $ docutray logout
+  $ docutray logout [--json]
+
+FLAGS
+  --json  Output as JSON (default when piped)
 
 DESCRIPTION
   Clear stored credentials by removing the local configuration file. This does not invalidate the API key itself — it
@@ -30,3 +33,5 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/logout
 ```
+
+_See code: [src/commands/logout.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/logout.ts)_

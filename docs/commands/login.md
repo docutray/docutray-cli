@@ -11,13 +11,14 @@ Configure your DocuTray API key for authentication. When called without argument
 
 ```
 USAGE
-  $ docutray login [API-KEY] [--base-url <value>]
+  $ docutray login [API-KEY] [--base-url <value>] [--json]
 
 ARGUMENTS
   [API-KEY]  API key to save (omit for interactive prompt)
 
 FLAGS
   --base-url=<value>  Custom base URL for the DocuTray API (default: https://app.docutray.com)
+  --json              Output as JSON (default when piped)
 
 DESCRIPTION
   Configure your DocuTray API key for authentication. When called without arguments, prompts interactively for the key
@@ -44,3 +45,5 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/login
 ```
+
+_See code: [src/commands/login.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/login.ts)_

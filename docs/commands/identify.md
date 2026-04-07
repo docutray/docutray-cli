@@ -11,14 +11,14 @@ Identify the type of a document by analyzing its content. Returns the best-match
 
 ```
 USAGE
-  $ docutray identify SOURCE [--async] [--table] [--types <value>]
+  $ docutray identify SOURCE [--async] [--json] [--types <value>]
 
 ARGUMENTS
   SOURCE  File path or URL to identify
 
 FLAGS
-  --async          Use async processing with polling (default: false). Status updates are emitted to stderr as JSON.
-  --table          Output results as a formatted table instead of JSON
+  --async          Use async processing with polling (default: false). Status updates are emitted to stderr.
+  --json           Output as JSON (default when piped)
   --types=<value>  Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt)
 
 DESCRIPTION
@@ -39,9 +39,9 @@ EXAMPLES
 
     $ docutray identify document.pdf --types invoice,receipt,contract
 
-  Display results as a formatted table
+  Force JSON output
 
-    $ docutray identify document.pdf --table
+    $ docutray identify document.pdf --json
 
   Use async processing with status polling
 
@@ -50,3 +50,5 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/identify
 ```
+
+_See code: [src/commands/identify.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/identify.ts)_
