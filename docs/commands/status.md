@@ -11,7 +11,10 @@ Show current authentication status and configuration. Displays whether you are a
 
 ```
 USAGE
-  $ docutray status
+  $ docutray status [--json]
+
+FLAGS
+  --json  Output as JSON (default when piped)
 
 DESCRIPTION
   Show current authentication status and configuration. Displays whether you are authenticated, the masked API key, the
@@ -23,9 +26,9 @@ EXAMPLES
 
     $ docutray status
 
-  Check if authenticated (JSON output, useful for scripts)
+  Output as JSON (default when piped)
 
-    $ docutray status | jq .authenticated
+    $ docutray status --json
 
   Verify env var authentication is detected
 
@@ -34,3 +37,5 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/status
 ```
+
+_See code: [src/commands/status.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/status.ts)_
