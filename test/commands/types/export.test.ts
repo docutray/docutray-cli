@@ -49,7 +49,7 @@ describe('types export --force', () => {
   it('resolves codeType to id before calling get', async () => {
     const client = mockClient()
     await TypesExport.run(['invoice'])
-    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice'})
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', page: 1, limit: 100})
     expect(client.documentTypes.get).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl')
   })
 
