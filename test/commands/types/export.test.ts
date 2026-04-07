@@ -22,6 +22,9 @@ function mockClient() {
   const client = {
     documentTypes: {
       get: vi.fn().mockResolvedValue({codeType: 'invoice', name: 'Invoice', fields: []}),
+      list: vi.fn().mockResolvedValue({
+        data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
+      }),
     },
   }
   mockCreateClient.mockReturnValue(client as any)
@@ -41,6 +44,13 @@ describe('types export --force', () => {
     exitSpy = vi.spyOn(TypesExport.prototype, 'exit').mockImplementation(() => {
       throw new Error('EXIT')
     })
+  })
+
+  it('resolves codeType to id before calling get', async () => {
+    const client = mockClient()
+    await TypesExport.run(['invoice'])
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice'})
+    expect(client.documentTypes.get).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl')
   })
 
   it('rejects overwriting existing file without --force', async () => {

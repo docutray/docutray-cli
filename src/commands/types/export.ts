@@ -4,6 +4,7 @@ import {existsSync, statSync, writeFileSync} from 'node:fs'
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputJson, outputSuccess, setForceJson} from '../../output.js'
+import {resolveDocumentTypeId} from '../../resolve-type.js'
 
 export default class TypesExport extends BaseCommand {
   static args = {
@@ -31,7 +32,8 @@ export default class TypesExport extends BaseCommand {
 
     try {
       const client = createClient()
-      const result = await client.documentTypes.get(args.code)
+      const id = await resolveDocumentTypeId(client, args.code)
+      const result = await client.documentTypes.get(id)
 
       if (flags.output) {
         if (existsSync(flags.output) && statSync(flags.output).isDirectory()) {

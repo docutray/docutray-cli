@@ -3,6 +3,7 @@ import {Args, Flags} from '@oclif/core'
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputKeyValue, setForceJson} from '../../output.js'
+import {resolveDocumentTypeId} from '../../resolve-type.js'
 
 export default class TypesGet extends BaseCommand {
   static args = {
@@ -27,7 +28,8 @@ export default class TypesGet extends BaseCommand {
 
     try {
       const client = createClient()
-      const result = await client.documentTypes.get(args.code)
+      const id = await resolveDocumentTypeId(client, args.code)
+      const result = await client.documentTypes.get(id)
 
       outputKeyValue(result, [
         {key: 'Code', value: result.codeType},

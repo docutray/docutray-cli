@@ -5,6 +5,7 @@ import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputKeyValue, outputSuccess, setForceJson} from '../../output.js'
 import {parseSchema} from '../../parse-schema.js'
+import {resolveDocumentTypeId} from '../../resolve-type.js'
 
 export default class TypesUpdate extends BaseCommand {
   static args = {
@@ -55,7 +56,8 @@ export default class TypesUpdate extends BaseCommand {
       }
 
       const client = createClient()
-      const result = await client.documentTypes.update(args.code, params)
+      const id = await resolveDocumentTypeId(client, args.code)
+      const result = await client.documentTypes.update(id, params)
 
       outputKeyValue(result, [
         {key: 'Code', value: result.codeType},
