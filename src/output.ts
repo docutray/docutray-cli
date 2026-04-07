@@ -19,14 +19,39 @@ export function outputJson(data: unknown): void {
 }
 
 export function outputError(error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error)
+  const fallbackMessage = error instanceof Error ? error.message : String(error)
+
+  // Duck-type API errors: check for statusCode and body (from SDK's APIError)
+  const isApiError =
+    error instanceof Error &&
+    'statusCode' in error &&
+    typeof (error as Record<string, unknown>).statusCode === 'number' &&
+    'body' in error &&
+    typeof (error as Record<string, unknown>).body === 'object' &&
+    (error as Record<string, unknown>).body !== null
+  const statusCode = isApiError ? (error as Record<string, unknown>).statusCode as number : undefined
+  const body = isApiError ? (error as Record<string, unknown>).body as Record<string, unknown> : undefined
+  const requestId = isApiError ? (error as Record<string, unknown>).requestId as string | undefined : undefined
+
+  // Extract detailed message from body.error or body.message, falling back to error.message
+  const detailMessage =
+    body && typeof body.error === 'string'
+      ? body.error
+      : body && typeof body.message === 'string'
+        ? body.message
+        : fallbackMessage
 
   if (isStderrInteractive()) {
-    process.stderr.write(`\u2717 Error: ${message}\n`)
+    const suffix = statusCode !== undefined ? ` (${statusCode})` : ''
+    process.stderr.write(`\u2717 Error: ${detailMessage}${suffix}\n`)
   } else {
-    const output: Record<string, unknown> = {error: message}
-    if (error instanceof Error && 'status' in error) {
-      output.status = (error as {status: number}).status
+    const output: Record<string, unknown> = {error: detailMessage}
+    if (statusCode !== undefined) {
+      output.status = statusCode
+    }
+
+    if (requestId !== undefined) {
+      output.requestId = requestId
     }
 
     process.stderr.write(JSON.stringify(output, null, 2) + '\n')

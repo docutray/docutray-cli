@@ -56,11 +56,65 @@ describe('output', () => {
     })
 
     it('includes status code in JSON output when available', () => {
-      const error = Object.assign(new Error('not found'), {status: 404})
+      const error = Object.assign(new Error('Request failed with status 400'), {
+        statusCode: 400,
+        body: {error: 'El código debe comenzar con "docutraycom_"'},
+        requestId: 'req_abc123',
+      })
+      outputError(error)
+      const output = stderrSpy.mock.calls[0]![0] as string
+      const parsed = JSON.parse(output)
+      expect(parsed.error).toBe('El código debe comenzar con "docutraycom_"')
+      expect(parsed.status).toBe(400)
+      expect(parsed.requestId).toBe('req_abc123')
+    })
+
+    it('extracts body.message when body.error is not available', () => {
+      const error = Object.assign(new Error('Request failed with status 422'), {
+        statusCode: 422,
+        body: {message: 'Validation failed'},
+      })
+      outputError(error)
+      const output = stderrSpy.mock.calls[0]![0] as string
+      const parsed = JSON.parse(output)
+      expect(parsed.error).toBe('Validation failed')
+      expect(parsed.status).toBe(422)
+    })
+
+    it('shows API error details with status code in TTY mode', () => {
+      const original = process.stderr.isTTY
+      Object.defineProperty(process.stderr, 'isTTY', {value: true, writable: true})
+
+      const error = Object.assign(new Error('Request failed with status 400'), {
+        statusCode: 400,
+        body: {error: 'El código debe comenzar con "docutraycom_"'},
+      })
       outputError(error)
       expect(stderrSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"status": 404'),
+        '\u2717 Error: El código debe comenzar con "docutraycom_" (400)\n',
       )
+
+      Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
+    })
+
+    it('falls back to error.message for non-API errors', () => {
+      outputError(new Error('something failed'))
+      const output = stderrSpy.mock.calls[0]![0] as string
+      const parsed = JSON.parse(output)
+      expect(parsed.error).toBe('something failed')
+      expect(parsed.status).toBeUndefined()
+      expect(parsed.requestId).toBeUndefined()
+    })
+
+    it('omits requestId from JSON when not present', () => {
+      const error = Object.assign(new Error('Request failed'), {
+        statusCode: 500,
+        body: {error: 'Internal server error'},
+      })
+      outputError(error)
+      const output = stderrSpy.mock.calls[0]![0] as string
+      const parsed = JSON.parse(output)
+      expect(parsed.requestId).toBeUndefined()
     })
 
     it('outputs JSON to stderr when forceJson is true even if TTY', () => {
