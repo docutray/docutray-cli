@@ -123,6 +123,132 @@ for code in $(docutray types list | jq -r '.data[].codeType'); do
 done
 ```
 
+## Creating document types
+
+Create a new document type with a name, code, description, and JSON schema:
+
+```bash
+docutray types create \
+  --name "Invoice" \
+  --code invoice \
+  --description "Standard commercial invoice" \
+  --schema schema.json
+```
+
+The `--schema` flag accepts either a file path or an inline JSON string:
+
+```bash
+docutray types create \
+  --name "Receipt" \
+  --code receipt \
+  --description "Purchase receipt" \
+  --schema '{"type":"object","properties":{"total":{"type":"number"},"date":{"type":"string"},"vendor":{"type":"string"}}}'
+```
+
+### Publishing
+
+By default, types are created as drafts. To publish immediately:
+
+```bash
+docutray types create \
+  --name "Invoice" \
+  --code invoice \
+  --description "Standard invoice" \
+  --schema schema.json \
+  --publish
+```
+
+### Conversion modes
+
+Choose how DocuTray processes the document:
+
+```bash
+# Default JSON extraction
+docutray types create --name "Invoice" --code invoice --description "Invoice" --schema schema.json --conversion-mode json
+
+# Toon mode
+docutray types create --name "Invoice" --code invoice_toon --description "Invoice toon" --schema schema.json --conversion-mode toon
+
+# Multi-prompt mode
+docutray types create --name "Invoice" --code invoice_multi --description "Invoice multi" --schema schema.json --conversion-mode multi_prompt
+```
+
+### Prompt hints
+
+Guide the extraction with custom hints:
+
+```bash
+docutray types create \
+  --name "Invoice" \
+  --code invoice \
+  --description "Standard invoice" \
+  --schema schema.json \
+  --prompt-hints "Use dd/mm/yyyy format for dates. Amounts should include currency symbol." \
+  --identify-hints "Look for invoice number, date, and total amount"
+```
+
+### Example JSON schema
+
+A minimal but complete extraction schema:
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "invoiceNumber": {
+      "type": "string",
+      "description": "The invoice number or identifier"
+    },
+    "date": {
+      "type": "string",
+      "description": "Invoice date in ISO 8601 format"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total amount including taxes"
+    },
+    "lineItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unitPrice": { "type": "number" }
+        }
+      }
+    }
+  }
+}
+```
+
+## Updating document types
+
+Update any field of an existing document type:
+
+```bash
+# Update the name
+docutray types update invoice --name "Updated Invoice"
+
+# Update the schema
+docutray types update invoice --schema new-schema.json
+
+# Update prompt hints
+docutray types update invoice --prompt-hints "Use dd/mm/yyyy format for dates"
+
+# Publish a draft
+docutray types update invoice --publish
+
+# Update multiple fields at once
+docutray types update invoice \
+  --name "Commercial Invoice v2" \
+  --description "Updated extraction schema" \
+  --schema updated-schema.json \
+  --prompt-hints "Extract amounts in USD"
+```
+
+Note: the `codeType` identifier cannot be changed after creation.
+
 ## Common workflows
 
 ### Find the right type for a document
