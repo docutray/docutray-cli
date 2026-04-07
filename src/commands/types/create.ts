@@ -1,9 +1,9 @@
 import {Flags} from '@oclif/core'
-import {existsSync, readFileSync} from 'node:fs'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputKeyValue, outputSuccess, setForceJson} from '../../output.js'
+import {parseSchema} from '../../parse-schema.js'
 
 export default class TypesCreate extends BaseCommand {
   static description = `Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string.`
@@ -54,7 +54,7 @@ export default class TypesCreate extends BaseCommand {
         {key: 'Name', value: result.name},
         {key: 'Description', value: result.description || '(none)'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
-        {key: 'Mode', value: ('conversionMode' in result ? String(result.conversionMode) : 'json')},
+        {key: 'Mode', value: (() => { const mode = (result as unknown as Record<string, unknown>).conversionMode; return typeof mode === 'string' && mode.trim() !== '' ? mode : 'json'; })()},
       ])
 
       outputSuccess({codeType: result.codeType, id: result.id}, `Created document type "${result.codeType}"`)
@@ -62,42 +62,5 @@ export default class TypesCreate extends BaseCommand {
       outputError(error)
       this.exit(1)
     }
-  }
-}
-
-function parseSchema(input: string): Record<string, unknown> {
-  // Try as file path first
-  if (existsSync(input)) {
-    const content = readFileSync(input, 'utf8')
-    try {
-      const parsed = JSON.parse(content)
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error('JSON schema must be an object')
-      }
-
-      return parsed as Record<string, unknown>
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(`Invalid JSON in schema file "${input}": ${error.message}`)
-      }
-
-      throw error
-    }
-  }
-
-  // Try as inline JSON
-  try {
-    const parsed = JSON.parse(input)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error('JSON schema must be an object')
-    }
-
-    return parsed as Record<string, unknown>
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Invalid schema: not a valid file path or JSON string`)
-    }
-
-    throw error
   }
 }

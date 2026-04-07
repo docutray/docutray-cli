@@ -1,9 +1,10 @@
 import {Args, Flags} from '@oclif/core'
-import {existsSync, readFileSync} from 'node:fs'
+import type {DocumentTypeUpdateParams} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputKeyValue, outputSuccess, setForceJson} from '../../output.js'
+import {parseSchema} from '../../parse-schema.js'
 
 export default class TypesUpdate extends BaseCommand {
   static args = {
@@ -37,14 +38,14 @@ export default class TypesUpdate extends BaseCommand {
     setForceJson(flags.json)
 
     try {
-      const params: Record<string, unknown> = {}
+      const params: DocumentTypeUpdateParams = {}
 
       if (flags.name !== undefined) params.name = flags.name
       if (flags.description !== undefined) params.description = flags.description
       if (flags.schema !== undefined) params.jsonSchema = parseSchema(flags.schema)
       if (flags['prompt-hints'] !== undefined) params.promptHints = flags['prompt-hints']
       if (flags['identify-hints'] !== undefined) params.identifyPromptHints = flags['identify-hints']
-      if (flags['conversion-mode'] !== undefined) params.conversionMode = flags['conversion-mode']
+      if (flags['conversion-mode'] !== undefined) params.conversionMode = flags['conversion-mode'] as 'json' | 'toon' | 'multi_prompt'
       if (flags['keep-ordering'] !== undefined) params.keepPropertyOrdering = flags['keep-ordering']
       if (flags.publish) params.isDraft = false
       else if (flags.draft !== undefined) params.isDraft = flags.draft
@@ -68,40 +69,5 @@ export default class TypesUpdate extends BaseCommand {
       outputError(error)
       this.exit(1)
     }
-  }
-}
-
-function parseSchema(input: string): Record<string, unknown> {
-  if (existsSync(input)) {
-    const content = readFileSync(input, 'utf8')
-    try {
-      const parsed = JSON.parse(content)
-      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error('JSON schema must be an object')
-      }
-
-      return parsed as Record<string, unknown>
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        throw new Error(`Invalid JSON in schema file "${input}": ${error.message}`)
-      }
-
-      throw error
-    }
-  }
-
-  try {
-    const parsed = JSON.parse(input)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      throw new Error('JSON schema must be an object')
-    }
-
-    return parsed as Record<string, unknown>
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Invalid schema: not a valid file path or JSON string`)
-    }
-
-    throw error
   }
 }

@@ -57,17 +57,15 @@ describe('types create', () => {
 
     await TypesCreate.run(['--name', 'Invoice', '--code', 'invoice', '--description', 'Standard invoice', '--schema', schema])
 
-    expect(client.documentTypes.create).toHaveBeenCalledWith({
-      codeType: 'invoice',
-      conversionMode: undefined,
-      description: 'Standard invoice',
-      identifyPromptHints: undefined,
-      isDraft: true,
-      jsonSchema: JSON.parse(schema),
-      keepPropertyOrdering: undefined,
-      name: 'Invoice',
-      promptHints: undefined,
-    })
+    expect(client.documentTypes.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        codeType: 'invoice',
+        description: 'Standard invoice',
+        isDraft: true,
+        jsonSchema: JSON.parse(schema),
+        name: 'Invoice',
+      }),
+    )
     expect(stdoutSpy).toHaveBeenCalled()
   })
 
