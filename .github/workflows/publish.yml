@@ -23,6 +23,15 @@ jobs:
       - run: npm test
       - name: Generate oclif manifest
         run: npx oclif manifest
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${TAG#v}"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "ERROR: Release tag ($TAG) does not match package.json version ($PKG_VERSION)"
+            exit 1
+          fi
       - name: Publish
         run: |
           VERSION=$(node -p "require('./package.json').version")
