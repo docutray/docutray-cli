@@ -29,6 +29,9 @@ const mockResult = {
 function mockClient() {
   const client = {
     documentTypes: {
+      list: vi.fn().mockResolvedValue({
+        data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
+      }),
       update: vi.fn().mockResolvedValue(mockResult),
     },
   }
@@ -56,7 +59,7 @@ describe('types update', () => {
 
     await TypesUpdate.run(['invoice', '--name', 'Updated Invoice'])
 
-    expect(client.documentTypes.update).toHaveBeenCalledWith('invoice', {name: 'Updated Invoice'})
+    expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {name: 'Updated Invoice'})
     expect(stdoutSpy).toHaveBeenCalled()
   })
 
@@ -69,7 +72,7 @@ describe('types update', () => {
     await TypesUpdate.run(['invoice', '--schema', 'new-schema.json'])
 
     expect(mockReadFileSync).toHaveBeenCalledWith('new-schema.json', 'utf8')
-    expect(client.documentTypes.update).toHaveBeenCalledWith('invoice', {
+    expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {
       jsonSchema: JSON.parse(schemaContent),
     })
   })
@@ -85,7 +88,7 @@ describe('types update', () => {
       '--conversion-mode', 'toon',
     ])
 
-    expect(client.documentTypes.update).toHaveBeenCalledWith('invoice', {
+    expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {
       conversionMode: 'toon',
       description: 'New description',
       name: 'New Name',
@@ -98,7 +101,7 @@ describe('types update', () => {
 
     await TypesUpdate.run(['invoice', '--publish'])
 
-    expect(client.documentTypes.update).toHaveBeenCalledWith('invoice', {isDraft: false})
+    expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {isDraft: false})
   })
 
   it('sets draft with --draft', async () => {
@@ -106,7 +109,7 @@ describe('types update', () => {
 
     await TypesUpdate.run(['invoice', '--draft'])
 
-    expect(client.documentTypes.update).toHaveBeenCalledWith('invoice', {isDraft: true})
+    expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {isDraft: true})
   })
 
   it('fails without any update flags', async () => {
