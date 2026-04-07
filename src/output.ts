@@ -25,16 +25,21 @@ export function outputError(error: unknown): void {
   const isApiError =
     error instanceof Error &&
     'statusCode' in error &&
-    typeof (error as Record<string, unknown>).statusCode === 'number'
+    typeof (error as Record<string, unknown>).statusCode === 'number' &&
+    'body' in error &&
+    typeof (error as Record<string, unknown>).body === 'object' &&
+    (error as Record<string, unknown>).body !== null
   const statusCode = isApiError ? (error as Record<string, unknown>).statusCode as number : undefined
-  const body = isApiError ? (error as Record<string, unknown>).body as Record<string, unknown> | undefined : undefined
+  const body = isApiError ? (error as Record<string, unknown>).body as Record<string, unknown> : undefined
   const requestId = isApiError ? (error as Record<string, unknown>).requestId as string | undefined : undefined
 
   // Extract detailed message from body.error or body.message, falling back to error.message
   const detailMessage =
-    (body && typeof body.error === 'string' && body.error) ||
-    (body && typeof body.message === 'string' && body.message) ||
-    fallbackMessage
+    body && typeof body.error === 'string'
+      ? body.error
+      : body && typeof body.message === 'string'
+        ? body.message
+        : fallbackMessage
 
   if (isStderrInteractive()) {
     const suffix = statusCode !== undefined ? ` (${statusCode})` : ''
@@ -45,7 +50,7 @@ export function outputError(error: unknown): void {
       output.status = statusCode
     }
 
-    if (requestId) {
+    if (requestId !== undefined) {
       output.requestId = requestId
     }
 
