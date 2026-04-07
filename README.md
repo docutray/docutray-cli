@@ -38,7 +38,7 @@ docutray convert invoice.pdf --type electronic-invoice
 ## Commands
 
 <!-- commands -->
-# Command Topics
+## Command Topics
 
 * [`docutray autocomplete`](docs/commands/autocomplete.md) - Display autocomplete installation instructions.
 * [`docutray convert`](docs/commands/convert.md) - Convert a document to structured data using a specified document type schema. Accepts a local file path or a public URL as the source. By default, processing is synchronous — the command waits and returns the extracted data. Use --async for long-running documents to poll for completion with status updates on stderr.
@@ -78,7 +78,8 @@ docutray login --base-url https://staging.docutray.com
 ## Output format
 
 - **JSON by default** — optimized for programmatic consumption by AI agents and scripts
-- **`--table` flag** — human-readable table format (available on list/get/identify commands)
+- **Human-friendly output in TTY** — tables, key-value pairs, and icons when running interactively
+- **`--json` flag** — force JSON output explicitly (automatic when stdout is piped)
 - **Exit code `0`** — success
 - **Exit code `1`** — error, with JSON error details on stderr
 
