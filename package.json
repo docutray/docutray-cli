@@ -62,7 +62,8 @@
   "dependencies": {
     "@oclif/core": "^4",
     "@oclif/plugin-autocomplete": "^3.2.45",
-    "docutray": "^0.1.2"
+    "docutray": "^0.1.2",
+    "open": "^11.0.0"
   },
   "devDependencies": {
     "@types/node": "^20",
