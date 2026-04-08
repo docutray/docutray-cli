@@ -5,9 +5,11 @@ import {join} from 'node:path'
 const CONFIG_DIR = join(homedir(), '.config', 'docutray')
 const CONFIG_FILE = join(CONFIG_DIR, 'config.json')
 
-interface Config {
+export interface Config {
   apiKey?: string
   baseUrl?: string
+  organizationId?: string
+  organizationName?: string
 }
 
 export function getConfigDir(): string {

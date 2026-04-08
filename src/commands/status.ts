@@ -28,7 +28,7 @@ export default class Status extends BaseCommand {
       const source = process.env.DOCUTRAY_API_KEY ? 'environment' : config.apiKey ? 'config' : 'none'
       const authenticated = Boolean(apiKey)
 
-      const data = {
+      const data: Record<string, unknown> = {
         authenticated,
         apiKey: apiKey ? maskApiKey(apiKey) : null,
         source,
@@ -36,13 +36,21 @@ export default class Status extends BaseCommand {
         configPath: getConfigPath(),
       }
 
-      outputKeyValue(data, [
+      const entries = [
         {key: 'Authenticated', value: authenticated ? 'yes' : 'no', icon: authenticated ? '\u2713' : '\u2717'},
         {key: 'API Key', value: apiKey ? maskApiKey(apiKey) : 'none'},
         {key: 'Source', value: source === 'environment' ? 'environment variable' : source === 'config' ? 'config file' : 'none'},
-        {key: 'Base URL', value: data.baseUrl},
+        {key: 'Base URL', value: data.baseUrl as string},
         {key: 'Config', value: getConfigPath()},
-      ])
+      ]
+
+      if (config.organizationId) {
+        data.organizationId = config.organizationId
+        data.organizationName = config.organizationName
+        entries.splice(3, 0, {key: 'Organization', value: `${config.organizationName || ''} (${config.organizationId})`})
+      }
+
+      outputKeyValue(data, entries)
     } catch (error) {
       outputError(error)
       this.exit(1)
