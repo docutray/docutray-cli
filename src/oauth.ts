@@ -40,18 +40,18 @@ export function generatePKCE(): PKCEChallenge {
   return {codeChallenge, codeVerifier}
 }
 
-export function buildAuthorizeUrl(port: number, state: string, codeChallenge: string): string {
-  const baseUrl = getBaseUrl() || DEFAULT_BASE_URL
+export function buildAuthorizeUrl(port: number, state: string, codeChallenge: string, baseUrl?: string): string {
+  const resolvedBaseUrl = baseUrl || getBaseUrl() || DEFAULT_BASE_URL
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
-    redirect_uri: `http://localhost:${port}`,
+    redirect_uri: `http://127.0.0.1:${port}`,
     response_type: 'code',
     scope: 'openid',
     state,
   })
-  return `${baseUrl}/api/auth/oauth2/authorize?${params.toString()}`
+  return `${resolvedBaseUrl}/api/auth/oauth2/authorize?${params.toString()}`
 }
 
 export async function startCallbackServer(): Promise<{
@@ -82,8 +82,9 @@ export async function startCallbackServer(): Promise<{
     }
 
     if (!code || !state) {
-      res.writeHead(400, {'Content-Type': 'text/html'})
-      res.end('<html><body><h1>Invalid callback</h1><p>Missing code or state parameter.</p></body></html>')
+      // Ignore requests without OAuth params (e.g. browser favicon.ico)
+      res.writeHead(404)
+      res.end()
       return
     }
 
@@ -118,9 +119,10 @@ export async function exchangeCodeForToken(
   code: string,
   codeVerifier: string,
   redirectUri: string,
+  baseUrl?: string,
 ): Promise<TokenResponse> {
-  const baseUrl = getBaseUrl() || DEFAULT_BASE_URL
-  const response = await fetch(`${baseUrl}/api/auth/oauth2/token`, {
+  const resolvedBaseUrl = baseUrl || getBaseUrl() || DEFAULT_BASE_URL
+  const response = await fetch(`${resolvedBaseUrl}/api/auth/oauth2/token`, {
     body: new URLSearchParams({
       client_id: CLIENT_ID,
       code,
@@ -148,9 +150,10 @@ export function extractOrgFromScope(scope: string): string | undefined {
 export async function createApiKeyFromToken(
   accessToken: string,
   organizationId: string,
+  baseUrl?: string,
 ): Promise<ApiKeyResponse> {
-  const baseUrl = getBaseUrl() || DEFAULT_BASE_URL
-  const response = await fetch(`${baseUrl}/api/auth/oauth/create-api-key`, {
+  const resolvedBaseUrl = baseUrl || getBaseUrl() || DEFAULT_BASE_URL
+  const response = await fetch(`${resolvedBaseUrl}/api/auth/oauth/create-api-key`, {
     body: JSON.stringify({organizationId}),
     headers: {
       'Authorization': `Bearer ${accessToken}`,

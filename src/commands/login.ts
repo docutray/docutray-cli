@@ -82,6 +82,8 @@ export default class Login extends BaseCommand {
 
   private async loginWithApiKey(apiKey: string, config: Config): Promise<void> {
     config.apiKey = apiKey
+    delete config.organizationId
+    delete config.organizationName
     writeConfig(config)
 
     const data = {
@@ -101,7 +103,7 @@ export default class Login extends BaseCommand {
     const {close, port, waitForCallback} = await startCallbackServer()
 
     try {
-      const authorizeUrl = buildAuthorizeUrl(port, state, codeChallenge)
+      const authorizeUrl = buildAuthorizeUrl(port, state, codeChallenge, config.baseUrl)
 
       process.stderr.write('Opening browser for authentication...\n')
       process.stderr.write(`If the browser does not open, visit:\n${authorizeUrl}\n\n`)
@@ -119,11 +121,11 @@ export default class Login extends BaseCommand {
         throw new Error('State parameter mismatch — possible CSRF attack. Please try again.')
       }
 
-      const redirectUri = `http://localhost:${port}`
+      const redirectUri = `http://127.0.0.1:${port}`
 
       // Exchange authorization code for access token
       process.stderr.write('Exchanging authorization code...\n')
-      const tokenResponse = await exchangeCodeForToken(result.code, codeVerifier, redirectUri)
+      const tokenResponse = await exchangeCodeForToken(result.code, codeVerifier, redirectUri, config.baseUrl)
 
       // Extract organization ID from scope
       const orgId = extractOrgFromScope(tokenResponse.scope || '')
@@ -133,7 +135,7 @@ export default class Login extends BaseCommand {
 
       // Create API key from OAuth token
       process.stderr.write('Creating API key...\n')
-      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, orgId)
+      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, orgId, config.baseUrl)
 
       // Save to config
       config.apiKey = apiKeyResponse.apiKey
@@ -167,14 +169,15 @@ export default class Login extends BaseCommand {
       }
 
       let input = ''
-      process.stdin.resume()
-      process.stdin.on('data', (data: Buffer) => {
+      const onData = (data: Buffer) => {
         const char = data.toString()
         if (char === '\n' || char === '\r') {
           if (process.stdin.isTTY) {
             process.stdin.setRawMode(false)
           }
 
+          process.stdin.removeListener('data', onData)
+          process.stdin.pause()
           process.stderr.write('\n')
           rl.close()
           resolve(input)
@@ -183,7 +186,10 @@ export default class Login extends BaseCommand {
         } else {
           input += char
         }
-      })
+      }
+
+      process.stdin.resume()
+      process.stdin.on('data', onData)
     })
   }
 

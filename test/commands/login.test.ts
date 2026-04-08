@@ -189,9 +189,10 @@ describe('login with OAuth2 flow', () => {
       expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
         'auth-code',
         'test-verifier',
-        'http://localhost:9999',
+        'http://127.0.0.1:9999',
+        undefined,
       )
-      expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc')
+      expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
       expect(mockWriteConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'dt_live_newkey123',

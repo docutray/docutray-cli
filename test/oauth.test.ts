@@ -44,7 +44,7 @@ describe('buildAuthorizeUrl', () => {
     expect(parsed.pathname).toBe('/api/auth/oauth2/authorize')
     expect(parsed.searchParams.get('client_id')).toBe('docutray-cli')
     expect(parsed.searchParams.get('response_type')).toBe('code')
-    expect(parsed.searchParams.get('redirect_uri')).toBe('http://localhost:3456')
+    expect(parsed.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:3456')
     expect(parsed.searchParams.get('state')).toBe('test-state')
     expect(parsed.searchParams.get('code_challenge')).toBe('test-challenge')
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')
