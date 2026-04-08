@@ -54,7 +54,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/steps/run
 ```
 
-_See code: [src/commands/steps/run.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/steps/run.ts)_
+_See code: [src/commands/steps/run.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/steps/run.ts)_
 
 ## `docutray steps status EXECUTION-ID`
 
@@ -92,4 +92,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/steps/status
 ```
 
-_See code: [src/commands/steps/status.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/steps/status.ts)_
+_See code: [src/commands/steps/status.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/steps/status.ts)_

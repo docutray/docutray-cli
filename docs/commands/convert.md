@@ -11,7 +11,8 @@ Convert a document to structured data using a specified document type schema. Ac
 
 ```
 USAGE
-  $ docutray convert SOURCE -t <value> [--async] [--json] [--metadata <value>] [--webhook-url <value>]
+  $ docutray convert SOURCE -t <value> [--async] [--json] [--metadata <value>] [--timeout <value>]
+    [--webhook-url <value>]
 
 ARGUMENTS
   SOURCE  File path or URL to convert
@@ -21,6 +22,7 @@ FLAGS
       --async                Use async processing with polling (default: false). Status updates are emitted to stderr.
       --json                 Output as JSON (default when piped)
       --metadata=<value>     JSON metadata to attach to the conversion (e.g. '{"key":"value"}')
+      --timeout=<value>      [default: 300] Polling timeout in seconds for async processing (default: 300)
       --webhook-url=<value>  Webhook URL to receive a POST notification when conversion completes
 
 DESCRIPTION
@@ -41,6 +43,10 @@ EXAMPLES
 
     $ docutray convert invoice.pdf -t electronic-invoice --async
 
+  Async with 10-minute timeout for large documents
+
+    $ docutray convert large-doc.pdf -t electronic-invoice --async --timeout 600
+
   Convert with webhook notification on completion
 
     $ docutray convert receipt.jpg -t receipt --webhook-url https://example.com/hook
@@ -53,4 +59,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/convert
 ```
 
-_See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/convert.ts)_
+_See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/convert.ts)_

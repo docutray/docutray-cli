@@ -61,7 +61,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/create
 ```
 
-_See code: [src/commands/types/create.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/types/create.ts)_
+_See code: [src/commands/types/create.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/types/create.ts)_
 
 ## `docutray types export CODE`
 
@@ -105,7 +105,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/export
 ```
 
-_See code: [src/commands/types/export.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/types/export.ts)_
+_See code: [src/commands/types/export.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/types/export.ts)_
 
 ## `docutray types get CODE`
 
@@ -142,7 +142,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/get
 ```
 
-_See code: [src/commands/types/get.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/types/get.ts)_
+_See code: [src/commands/types/get.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/types/get.ts)_
 
 ## `docutray types list`
 
@@ -188,7 +188,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/list
 ```
 
-_See code: [src/commands/types/list.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/types/list.ts)_
+_See code: [src/commands/types/list.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/types/list.ts)_
 
 ## `docutray types update CODE`
 
@@ -241,4 +241,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/update
 ```
 
-_See code: [src/commands/types/update.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/types/update.ts)_
+_See code: [src/commands/types/update.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/types/update.ts)_

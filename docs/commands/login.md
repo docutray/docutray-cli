@@ -46,4 +46,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/login
 ```
 
-_See code: [src/commands/login.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/login.ts)_
+_See code: [src/commands/login.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/login.ts)_

@@ -38,4 +38,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/status
 ```
 
-_See code: [src/commands/status.ts](https://github.com/docutray/docutray-cli/blob/v0.1.2/src/commands/status.ts)_
+_See code: [src/commands/status.ts](https://github.com/docutray/docutray-cli/blob/v0.1.3/src/commands/status.ts)_
