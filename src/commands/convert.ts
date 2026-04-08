@@ -19,6 +19,7 @@ export default class Convert extends BaseCommand {
     {command: '<%= config.bin %> convert invoice.pdf --type electronic-invoice', description: 'Convert a local PDF using a document type'},
     {command: '<%= config.bin %> convert https://example.com/doc.pdf -t electronic-invoice', description: 'Convert a document from a URL'},
     {command: '<%= config.bin %> convert invoice.pdf -t electronic-invoice --async', description: 'Use async processing with status polling'},
+    {command: '<%= config.bin %> convert large-doc.pdf -t electronic-invoice --async --timeout 600', description: 'Async with 10-minute timeout for large documents'},
     {command: '<%= config.bin %> convert receipt.jpg -t receipt --webhook-url https://example.com/hook', description: 'Convert with webhook notification on completion'},
     {command: '<%= config.bin %> convert invoice.pdf -t electronic-invoice --metadata \'{"ref":"order-123"}\'', description: 'Attach custom metadata to the conversion'},
   ]
@@ -27,6 +28,7 @@ export default class Convert extends BaseCommand {
     async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr.'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     metadata: Flags.string({description: 'JSON metadata to attach to the conversion (e.g. \'{"key":"value"}\')'}),
+    timeout: Flags.integer({default: 300, description: 'Polling timeout in seconds for async processing (default: 300)'}),
     type: Flags.string({char: 't', description: 'Document type code to use for extraction (see: docutray types list)', required: true}),
     'webhook-url': Flags.string({description: 'Webhook URL to receive a POST notification when conversion completes'}),
   }
@@ -50,15 +52,32 @@ export default class Convert extends BaseCommand {
 
       if (flags.async) {
         const status = await client.convert.runAsync(params)
-        const result = await status.wait({
-          onStatus(s) {
-            if (isStderrInteractive()) {
-              process.stderr.write(`  Status: ${s.status}\n`)
-            } else {
-              process.stderr.write(JSON.stringify({status: s.status}) + '\n')
-            }
-          },
-        })
+        const conversionId = status.conversion_id
+
+        if (isStderrInteractive()) {
+          process.stderr.write(`⟳ Conversion ${conversionId}: ${status.status}\n`)
+        } else {
+          process.stderr.write(JSON.stringify({conversionId, status: status.status}) + '\n')
+        }
+
+        let result
+        try {
+          result = await status.wait({
+            onStatus(s) {
+              if (isStderrInteractive()) {
+                process.stderr.write(`⟳ Conversion ${conversionId}: ${s.status}\n`)
+              } else {
+                process.stderr.write(JSON.stringify({conversionId, status: s.status}) + '\n')
+              }
+            },
+            timeout: flags.timeout * 1000,
+          })
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          const enriched = new Error(`${msg} (conversionId: ${conversionId}). Use the conversion ID to check status later.`)
+          throw enriched
+        }
+
         outputJson(result)
       } else {
         const result = await client.convert.run(params)
