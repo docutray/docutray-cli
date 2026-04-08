@@ -147,6 +147,40 @@ describe('convert --async', () => {
     exitSpy.mockRestore()
   })
 
+  it('prints TTY format with conversion_id when stderr is TTY', async () => {
+    const originalIsTTY = process.stderr.isTTY
+    process.stderr.isTTY = true
+    try {
+      mockClient()
+      await Convert.run(['file.pdf', '-t', 'inv', '--async'])
+      const stderrCalls = stderrSpy.mock.calls.map((c: any) => c[0] as string)
+      const ttyCall = stderrCalls.find((s: string) => s.includes('⟳ Conversion conv_abc123:'))
+      expect(ttyCall).toBeDefined()
+    } finally {
+      process.stderr.isTTY = originalIsTTY
+    }
+  })
+
+  it('rethrows non-timeout errors without wrapping', async () => {
+    const client = mockClient()
+    const apiError = Object.assign(new Error('Forbidden'), {statusCode: 403, body: {error: 'Forbidden'}, requestId: 'req-1'})
+    client.mockWait.mockRejectedValue(apiError)
+
+    const exitSpy = vi.spyOn(Convert.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+
+    await expect(Convert.run(['file.pdf', '-t', 'inv', '--async', '--json'])).rejects.toThrow('EXIT')
+    // Verify outputError received the original error with its properties intact
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Forbidden'),
+    )
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('req-1'),
+    )
+    exitSpy.mockRestore()
+  })
+
   it('includes conversion_id in JSON status output', async () => {
     const client = mockClient()
     client.mockWait.mockImplementation(async (opts: any) => {

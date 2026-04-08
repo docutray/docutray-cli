@@ -28,7 +28,7 @@ export default class Convert extends BaseCommand {
     async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr.'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     metadata: Flags.string({description: 'JSON metadata to attach to the conversion (e.g. \'{"key":"value"}\')'}),
-    timeout: Flags.integer({default: 300, description: 'Polling timeout in seconds for async processing (default: 300)'}),
+    timeout: Flags.integer({default: 300, description: 'Polling timeout in seconds for async processing', min: 1}),
     type: Flags.string({char: 't', description: 'Document type code to use for extraction (see: docutray types list)', required: true}),
     'webhook-url': Flags.string({description: 'Webhook URL to receive a POST notification when conversion completes'}),
   }
@@ -74,8 +74,12 @@ export default class Convert extends BaseCommand {
           })
         } catch (error) {
           const msg = error instanceof Error ? error.message : String(error)
-          const enriched = new Error(`${msg} (conversionId: ${conversionId}). Use the conversion ID to check status later.`)
-          throw enriched
+          const isTimeout = msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out')
+          if (isTimeout) {
+            throw new Error(`${msg} (conversionId: ${conversionId}). Use the conversion ID to check status later.`)
+          }
+
+          throw error
         }
 
         outputJson(result)

@@ -19,7 +19,7 @@ FLAGS
       --metadata=<value>     JSON metadata to attach to the conversion (e.g.
                              '{"key":"value"}')
       --timeout=<value>      [default: 300] Polling timeout in seconds for async
-                             processing (default: 300)
+                             processing
       --webhook-url=<value>  Webhook URL to receive a POST notification when
                              conversion completes
 
