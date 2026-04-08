@@ -1,5 +1,4 @@
-import {describe, expect, it, vi, beforeEach, afterEach} from 'vitest'
-import * as http from 'node:http'
+import {describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../src/config.js', () => ({
   getBaseUrl: vi.fn(() => 'https://app.docutray.com'),

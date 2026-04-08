@@ -106,13 +106,10 @@ describe('login with --api-key flag', () => {
 describe('login with OAuth2 flow', () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>
   let stderrSpy: ReturnType<typeof vi.spyOn>
-  let stdinListeners: Map<string, Function>
-
   beforeEach(() => {
     vi.clearAllMocks()
     stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
-    stdinListeners = new Map()
   })
 
   function setupOAuthMocks() {
@@ -159,43 +156,15 @@ describe('login with OAuth2 flow', () => {
     }
   })
 
-  it('calls exchangeCodeForToken with correct parameters', async () => {
+  it('skips OAuth flow when --api-key flag is provided', async () => {
     setupOAuthMocks()
 
-    // Mock waitForCallback to return matching state
-    const waitFn = vi.fn()
-    mockStartCallbackServer.mockResolvedValue({
-      port: 9999,
-      close: vi.fn(),
-      waitForCallback: waitFn,
-    })
-
-    waitFn.mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'})
-
-    // Simulate interactive TTY + user pressing 'n' for "no API key"
-    const originalIsTTY = process.stderr.isTTY
-    process.stderr.isTTY = true
-
-    // Mock readline - user answers 'n' to "Do you have API key?"
-    const originalCreateInterface = (await import('node:readline')).createInterface
-    const {createInterface} = await import('node:readline')
-
-    const exitSpy = vi.spyOn(Login.prototype, 'exit').mockImplementation(() => {
-      throw new Error('EXIT')
-    })
-
-    try {
-      // This will fail due to state mismatch, which is expected
-      // The important thing is that the OAuth flow was initiated
-      await expect(Login.run(['--api-key', 'dt_live_test123'])).resolves.not.toThrow()
-      // With --api-key flag, it skips OAuth entirely
-      expect(mockWriteConfig).toHaveBeenCalledWith(
-        expect.objectContaining({apiKey: 'dt_live_test123'}),
-      )
-    } finally {
-      process.stderr.isTTY = originalIsTTY
-      exitSpy.mockRestore()
-    }
+    await Login.run(['--api-key', 'dt_live_test123'])
+    // With --api-key flag, it goes directly to loginWithApiKey
+    expect(mockWriteConfig).toHaveBeenCalledWith(
+      expect.objectContaining({apiKey: 'dt_live_test123'}),
+    )
+    expect(mockStartCallbackServer).not.toHaveBeenCalled()
   })
 
   it('executes full OAuth flow and saves org info to config', async () => {
