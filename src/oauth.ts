@@ -5,6 +5,7 @@ import {getBaseUrl} from './config.js'
 
 const CLIENT_ID = 'docutray-cli'
 const DEFAULT_BASE_URL = 'https://app.docutray.com'
+const OAUTH_CALLBACK_PORT = 9876
 const OAUTH_TIMEOUT_MS = 120_000
 
 export interface PKCEChallenge {
@@ -20,6 +21,7 @@ export interface CallbackResult {
 export interface TokenResponse {
   access_token: string
   expires_in: number
+  id_token?: string
   refresh_token?: string
   scope?: string
   token_type: string
@@ -42,16 +44,19 @@ export function generatePKCE(): PKCEChallenge {
 
 export function buildAuthorizeUrl(port: number, state: string, codeChallenge: string, baseUrl?: string): string {
   const resolvedBaseUrl = baseUrl || getBaseUrl() || DEFAULT_BASE_URL
-  const params = new URLSearchParams({
-    client_id: CLIENT_ID,
-    code_challenge: codeChallenge,
-    code_challenge_method: 'S256',
-    redirect_uri: `http://127.0.0.1:${port}`,
-    response_type: 'code',
-    scope: 'openid',
-    state,
-  })
-  return `${resolvedBaseUrl}/api/auth/oauth2/authorize?${params.toString()}`
+  const redirectUri = `http://localhost:${port}/callback`
+  // Build query string manually to avoid URL-encoding the redirect_uri,
+  // which better-auth does not decode before validating against registered URLs.
+  const query = [
+    `client_id=${CLIENT_ID}`,
+    `response_type=code`,
+    `redirect_uri=${redirectUri}`,
+    `code_challenge=${codeChallenge}`,
+    `code_challenge_method=S256`,
+    `scope=openid`,
+    `state=${state}`,
+  ].join('&')
+  return `${resolvedBaseUrl}/api/auth/oauth2/authorize?${query}`
 }
 
 export async function startCallbackServer(): Promise<{
@@ -69,39 +74,59 @@ export async function startCallbackServer(): Promise<{
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', `http://localhost`)
+
+    // Only process requests to /callback, ignore everything else (favicon.ico, etc.)
+    if (url.pathname !== '/callback') {
+      res.writeHead(404)
+      res.end()
+      return
+    }
+
     const code = url.searchParams.get('code')
     const state = url.searchParams.get('state')
     const error = url.searchParams.get('error')
 
     if (error) {
       const description = url.searchParams.get('error_description') || error
-      res.writeHead(200, {'Content-Type': 'text/html'})
+      res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
       res.end('<html><body><h1>Authentication failed</h1><p>You can close this window.</p></body></html>')
       rejectCallback(new Error(`OAuth error: ${description}`))
       return
     }
 
     if (!code || !state) {
-      // Ignore requests without OAuth params (e.g. browser favicon.ico)
-      res.writeHead(404)
-      res.end()
+      res.writeHead(400, {'Connection': 'close', 'Content-Type': 'text/html'})
+      res.end('<html><body><h1>Invalid callback</h1><p>Missing code or state parameter.</p></body></html>')
       return
     }
 
-    res.writeHead(200, {'Content-Type': 'text/html'})
+    res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
     res.end('<html><body><h1>Authentication successful!</h1><p>You can close this window and return to the terminal.</p></body></html>')
     resolveCallback({code, state})
   })
 
-  const port = await new Promise<number>((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address()
-      resolve(typeof address === 'object' && address ? address.port : 0)
+  const port = await new Promise<number>((resolve, reject) => {
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        reject(new Error(`Port ${OAUTH_CALLBACK_PORT} is already in use. Close the process using it and try again.`))
+      } else {
+        reject(err)
+      }
+    })
+    server.listen(OAUTH_CALLBACK_PORT, '127.0.0.1', () => {
+      resolve(OAUTH_CALLBACK_PORT)
     })
   })
 
   return {
-    close: () => server.close(),
+    close: () => {
+      // Force-close any lingering sockets (e.g. browser keep-alive) so the
+      // event loop can drain and the CLI process exits promptly. Without this,
+      // server.close() waits for existing connections to close on their own,
+      // which can hang for a long time after a successful OAuth callback.
+      server.closeAllConnections()
+      server.close()
+    },
     port,
     waitForCallback: (timeout = OAUTH_TIMEOUT_MS) => {
       const timer = setTimeout(() => {
@@ -142,9 +167,32 @@ export async function exchangeCodeForToken(
   return response.json() as Promise<TokenResponse>
 }
 
-export function extractOrgFromScope(scope: string): string | undefined {
-  const match = scope.match(/org:(\S+)/)
-  return match?.[1]
+export interface OAuthOrganization {
+  id: string
+  name: string
+  slug: string | null
+  role: string
+}
+
+export async function fetchOrganizations(
+  accessToken: string,
+  baseUrl?: string,
+): Promise<OAuthOrganization[]> {
+  const resolvedBaseUrl = baseUrl || getBaseUrl() || DEFAULT_BASE_URL
+  const response = await fetch(`${resolvedBaseUrl}/api/auth/oauth/organizations`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+    },
+    method: 'GET',
+  })
+
+  if (!response.ok) {
+    const text = await response.text()
+    throw new Error(`Failed to fetch organizations (${response.status}): ${text}`)
+  }
+
+  const data = await response.json() as {organizations: OAuthOrganization[]}
+  return data.organizations
 }
 
 export async function createApiKeyFromToken(

@@ -20,7 +20,7 @@ vi.mock('../../src/oauth.js', () => ({
   buildAuthorizeUrl: vi.fn(() => 'https://app.docutray.com/api/auth/oauth2/authorize?test=1'),
   createApiKeyFromToken: vi.fn(),
   exchangeCodeForToken: vi.fn(),
-  extractOrgFromScope: vi.fn(),
+  fetchOrganizations: vi.fn(),
   generatePKCE: vi.fn(() => ({codeVerifier: 'test-verifier', codeChallenge: 'test-challenge'})),
   startCallbackServer: vi.fn(),
 }))
@@ -49,7 +49,7 @@ import {writeConfig, readConfig} from '../../src/config.js'
 import {
   createApiKeyFromToken,
   exchangeCodeForToken,
-  extractOrgFromScope,
+  fetchOrganizations,
   startCallbackServer,
 } from '../../src/oauth.js'
 import Login from '../../src/commands/login.js'
@@ -57,7 +57,7 @@ import Login from '../../src/commands/login.js'
 const mockWriteConfig = vi.mocked(writeConfig)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
 const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
-const mockExtractOrgFromScope = vi.mocked(extractOrgFromScope)
+const mockFetchOrganizations = vi.mocked(fetchOrganizations)
 const mockCreateApiKeyFromToken = vi.mocked(createApiKeyFromToken)
 
 describe('login with --api-key flag', () => {
@@ -115,7 +115,7 @@ describe('login with OAuth2 flow', () => {
   function setupOAuthMocks() {
     const closeFn = vi.fn()
     mockStartCallbackServer.mockResolvedValue({
-      port: 9999,
+      port: 9876,
       close: closeFn,
       waitForCallback: vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'}),
     })
@@ -124,10 +124,11 @@ describe('login with OAuth2 flow', () => {
       access_token: 'oauth-token-123',
       token_type: 'bearer',
       expires_in: 3600,
-      scope: 'openid org:org_abc',
     })
 
-    mockExtractOrgFromScope.mockReturnValue('org_abc')
+    mockFetchOrganizations.mockResolvedValue([
+      {id: 'org_abc', name: 'My Organization', slug: 'my-org', role: 'ADMIN'},
+    ])
 
     mockCreateApiKeyFromToken.mockResolvedValue({
       apiKey: 'dt_live_newkey123',
@@ -171,7 +172,7 @@ describe('login with OAuth2 flow', () => {
     const {closeFn} = setupOAuthMocks()
 
     mockStartCallbackServer.mockResolvedValue({
-      port: 9999,
+      port: 9876,
       close: closeFn,
       waitForCallback: vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'}),
     })
@@ -189,9 +190,10 @@ describe('login with OAuth2 flow', () => {
       expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
         'auth-code',
         'test-verifier',
-        'http://127.0.0.1:9999',
+        'http://localhost:9876/callback',
         undefined,
       )
+      expect(mockFetchOrganizations).toHaveBeenCalledWith('oauth-token-123', undefined)
       expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
       expect(mockWriteConfig).toHaveBeenCalledWith(
         expect.objectContaining({

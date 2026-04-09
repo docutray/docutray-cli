@@ -8,7 +8,7 @@ import {
   buildAuthorizeUrl,
   createApiKeyFromToken,
   exchangeCodeForToken,
-  extractOrgFromScope,
+  fetchOrganizations,
   generatePKCE,
   startCallbackServer,
 } from '../oauth.js'
@@ -41,8 +41,12 @@ export default class Login extends BaseCommand {
 
     try {
       const config = readConfig()
+      // Reset baseUrl on login: use the flag value, or clear it to default to production.
+      // This prevents stale baseUrl from previous sessions leaking into new logins.
       if (flags['base-url']) {
         config.baseUrl = flags['base-url']
+      } else {
+        delete config.baseUrl
       }
 
       // Determine API key from arg or flag (non-interactive paths)
@@ -121,21 +125,29 @@ export default class Login extends BaseCommand {
         throw new Error('State parameter mismatch — possible CSRF attack. Please try again.')
       }
 
-      const redirectUri = `http://127.0.0.1:${port}`
+      const redirectUri = `http://localhost:${port}/callback`
 
       // Exchange authorization code for access token
       process.stderr.write('Exchanging authorization code...\n')
       const tokenResponse = await exchangeCodeForToken(result.code, codeVerifier, redirectUri, config.baseUrl)
 
-      // Extract organization ID from scope
-      const orgId = extractOrgFromScope(tokenResponse.scope || '')
-      if (!orgId) {
-        throw new Error('No organization was selected during authentication. Please try again and select an organization.')
+      // Fetch user's organizations using the access token
+      process.stderr.write('Fetching organizations...\n')
+      const organizations = await fetchOrganizations(tokenResponse.access_token, config.baseUrl)
+
+      if (organizations.length === 0) {
+        throw new Error('No organizations found. Create an organization in DocuTray first.')
+      }
+
+      // Use first org (future: prompt user to choose if multiple)
+      const org = organizations[0]!
+      if (organizations.length > 1) {
+        process.stderr.write(`Multiple organizations found, using: ${org.name}\n`)
       }
 
       // Create API key from OAuth token
       process.stderr.write('Creating API key...\n')
-      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, orgId, config.baseUrl)
+      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, org.id, config.baseUrl)
 
       // Save to config
       config.apiKey = apiKeyResponse.apiKey

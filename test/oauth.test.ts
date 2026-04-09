@@ -6,7 +6,6 @@ vi.mock('../src/config.js', () => ({
 
 import {
   buildAuthorizeUrl,
-  extractOrgFromScope,
   generatePKCE,
   startCallbackServer,
 } from '../src/oauth.js'
@@ -38,13 +37,13 @@ describe('generatePKCE', () => {
 
 describe('buildAuthorizeUrl', () => {
   it('constructs correct URL with all params', () => {
-    const url = buildAuthorizeUrl(3456, 'test-state', 'test-challenge')
+    const url = buildAuthorizeUrl(9876, 'test-state', 'test-challenge')
     const parsed = new URL(url)
     expect(parsed.origin).toBe('https://app.docutray.com')
     expect(parsed.pathname).toBe('/api/auth/oauth2/authorize')
     expect(parsed.searchParams.get('client_id')).toBe('docutray-cli')
     expect(parsed.searchParams.get('response_type')).toBe('code')
-    expect(parsed.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:3456')
+    expect(parsed.searchParams.get('redirect_uri')).toBe('http://localhost:9876/callback')
     expect(parsed.searchParams.get('state')).toBe('test-state')
     expect(parsed.searchParams.get('code_challenge')).toBe('test-challenge')
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')
@@ -52,28 +51,10 @@ describe('buildAuthorizeUrl', () => {
   })
 })
 
-describe('extractOrgFromScope', () => {
-  it('extracts org id from scope string', () => {
-    expect(extractOrgFromScope('openid org:org_123')).toBe('org_123')
-  })
-
-  it('returns undefined when no org in scope', () => {
-    expect(extractOrgFromScope('openid profile')).toBeUndefined()
-  })
-
-  it('returns undefined for empty scope', () => {
-    expect(extractOrgFromScope('')).toBeUndefined()
-  })
-
-  it('extracts first org from multiple scopes', () => {
-    expect(extractOrgFromScope('openid org:abc123 email')).toBe('abc123')
-  })
-})
-
 describe('startCallbackServer', () => {
-  it('starts server on a random port', async () => {
+  it('starts server on fixed port 9876', async () => {
     const {port, close} = await startCallbackServer()
-    expect(port).toBeGreaterThan(0)
+    expect(port).toBe(9876)
     close()
   })
 
@@ -82,7 +63,7 @@ describe('startCallbackServer', () => {
     const promise = waitForCallback()
 
     // Simulate browser callback
-    await fetch(`http://127.0.0.1:${port}/?code=test-code&state=test-state`)
+    await fetch(`http://127.0.0.1:${port}/callback?code=test-code&state=test-state`)
 
     const result = await promise
     expect(result.code).toBe('test-code')
@@ -95,7 +76,7 @@ describe('startCallbackServer', () => {
     const promise = waitForCallback()
 
     // Start the fetch but don't await it yet - let the server process the request
-    const fetchPromise = fetch(`http://127.0.0.1:${port}/?error=access_denied&error_description=User+denied`)
+    const fetchPromise = fetch(`http://127.0.0.1:${port}/callback?error=access_denied&error_description=User+denied`)
 
     await expect(promise).rejects.toThrow('OAuth error: User denied')
     await fetchPromise
