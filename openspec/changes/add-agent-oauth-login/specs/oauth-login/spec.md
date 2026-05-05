@@ -72,17 +72,19 @@ The CLI SHALL NOT write any non-JSON content to stdout during `docutray login --
 - **AND** stderr contains a JSON error object (when `--json` is in effect or stdout is piped)
 
 ### Requirement: Callback redirect URI matches the dashboard allowlist
-The CLI SHALL use the redirect URI authorized by the dashboard for `client_id=docutray-cli` (currently `http://localhost:9876/callback`) for the `--oauth` flow. The callback HTTP listener SHALL bind on the IPv4 loopback interface (`127.0.0.1`) on port `9876` by default. If port `9876` is in use, the CLI SHALL retry on the next 3 ports (`9877`, `9878`, `9879`) before failing with a clear error — those ports work only if the user's browser ignores the port mismatch on localhost; in practice, port `9876` is the one Better Auth will redirect to.
+The CLI SHALL use the redirect URI authorized by the dashboard for `client_id=docutray-cli` (currently `http://localhost:9876/callback`) for the `--oauth` flow. The callback HTTP listener SHALL bind on the IPv4 loopback interface (`127.0.0.1`) on port `9876`. The CLI SHALL fail fast on `EADDRINUSE` with an error that names the port and explains that retrying on a different port would not help, because the dashboard's OAuth allowlist only authorizes the literal `http://localhost:9876/callback` URL.
 
 #### Scenario: Callback URL uses localhost:9876
 - **WHEN** the OAuth callback server is started for `--oauth`
 - **THEN** the redirect URI included in the authorization URL is `http://localhost:9876/callback`
 - **AND** the callback server is bound on `127.0.0.1:9876`
 
-#### Scenario: Port collision falls through to retries
+#### Scenario: Port collision fails fast with actionable error
 - **WHEN** another process is using port `9876` at startup
-- **THEN** the CLI retries on `9877`, `9878`, `9879` before giving up
-- **AND** if all retries fail, the CLI exits non-zero with an error mentioning the port is in use
+- **THEN** the CLI exits non-zero immediately
+- **AND** stderr contains an error mentioning that port `9876` is in use
+- **AND** the error explains the dashboard only authorizes the literal callback URL, so changing port would not help
+- **AND** the error suggests closing the conflicting process (often another `docutray login` still waiting)
 
 ### Requirement: OAuth callback error surfaces to the user
 When the OAuth callback delivers an error (e.g. `error=access_denied`), the CLI SHALL exit non-zero with an error message that includes the provider's error or error description, and SHALL NOT modify `~/.config/docutray/config.json`.

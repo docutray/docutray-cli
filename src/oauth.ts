@@ -14,7 +14,13 @@ const DEFAULT_BASE_URL = 'https://app.docutray.com'
 const DEFAULT_CALLBACK_HOST = '127.0.0.1'
 const DEFAULT_REDIRECT_URI_HOST = 'localhost'
 const DEFAULT_CALLBACK_PORT = 9876
-const DEFAULT_PORT_RETRIES = 3
+// Default to 0 retries: the dashboard's OAuth allowlist authorizes only
+// `http://localhost:9876/callback`, so falling back to ports 9877+ would
+// bind locally but the dashboard would reject the redirect_uri silently —
+// the user would just see a 180s timeout with no useful error. Better to
+// fail fast with a message that names the conflicting port. Tests and
+// future-allowlist callers can opt into retry by passing a non-zero value.
+const DEFAULT_PORT_RETRIES = 0
 const OAUTH_TIMEOUT_MS = 120_000
 
 export interface CallbackServerOptions {
@@ -179,7 +185,11 @@ function listenWithRetry(
 
         server.removeListener('error', onError)
         if (err.code === 'EADDRINUSE') {
-          reject(new Error(`Port ${port} is already in use. Close the process using it and try again.`))
+          reject(new Error(
+            `Port ${port} is already in use. The DocuTray OAuth callback requires ` +
+            `this exact port (the dashboard only authorizes http://localhost:9876/callback). ` +
+            `Close the process holding it (often another \`docutray login\` still waiting) and try again.`,
+          ))
         } else {
           reject(err)
         }
