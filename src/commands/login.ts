@@ -13,16 +13,27 @@ import {
   startCallbackServer,
 } from '../oauth.js'
 import {isStderrInteractive, outputError, outputSuccess, setForceJson} from '../output.js'
+import {validateApiKey} from '../validators.js'
+
+interface OAuthLoginOptions {
+  openBrowser: boolean
+  timeoutMs: number
+}
+
+const DEFAULT_OAUTH_TIMEOUT_SECONDS = 180
+const TTY_MENU_OAUTH_TIMEOUT_MS = 120_000
 
 export default class Login extends BaseCommand {
   static args = {
     'api-key': Args.string({description: 'API key to save (omit for interactive prompt)', required: false}),
   }
 
-  static description = `Configure your DocuTray API key for authentication. When called without arguments, prompts to choose between pasting an existing API key or authenticating via OAuth2 in the browser. OAuth2 login opens your browser, lets you select an organization, and automatically generates an API key. Credentials are stored in ~/.config/docutray/config.json with restricted file permissions.`
+  static description = `Configure your DocuTray API key for authentication. When called without arguments, prompts to choose between pasting an existing API key or authenticating via OAuth2 in the browser. For non-interactive shells (CI, AI coding agents), use --oauth to drive the OAuth flow end-to-end without a TTY: the CLI prints the authorization URL on stderr, opens your browser, waits for the callback, and writes the resulting API key to ~/.config/docutray/config.json.`
 
   static examples = [
     {command: '<%= config.bin %> login', description: 'Interactive login — choose API key or OAuth2 browser login'},
+    {command: '<%= config.bin %> login --oauth', description: 'Login via OAuth in the browser (works in agents/CI without a TTY)'},
+    {command: '<%= config.bin %> login --oauth --no-browser', description: 'Print the OAuth URL but do not open the browser'},
     {command: '<%= config.bin %> login dt_live_abc123', description: 'Non-interactive login with API key as argument'},
     {command: '<%= config.bin %> login --api-key dt_live_abc123', description: 'Non-interactive login with API key flag'},
     {command: '<%= config.bin %> login --base-url https://staging.docutray.com', description: 'Login with a custom API base URL'},
@@ -33,6 +44,9 @@ export default class Login extends BaseCommand {
     'api-key': Flags.string({description: 'API key for non-interactive login'}),
     'base-url': Flags.string({description: 'Custom base URL for the DocuTray API (default: https://app.docutray.com)'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
+    'no-browser': Flags.boolean({default: false, description: 'Skip opening the browser; print the URL only (--oauth only)'}),
+    oauth: Flags.boolean({default: false, description: 'Login via OAuth in the browser (works without a TTY)'}),
+    timeout: Flags.integer({default: DEFAULT_OAUTH_TIMEOUT_SECONDS, description: 'OAuth callback timeout in seconds (--oauth only)'}),
   }
 
   async run(): Promise<void> {
@@ -52,14 +66,27 @@ export default class Login extends BaseCommand {
       // Determine API key from arg or flag (non-interactive paths)
       const directApiKey = args['api-key'] || flags['api-key']
 
+      if (flags.oauth && directApiKey) {
+        throw new Error('--oauth cannot be combined with an api-key argument or --api-key flag')
+      }
+
       if (directApiKey) {
-        await this.loginWithApiKey(directApiKey.trim(), config)
+        const apiKey = validateApiKey(directApiKey)
+        await this.loginWithApiKey(apiKey, config)
+        return
+      }
+
+      if (flags.oauth) {
+        await this.loginWithOAuth(config, {
+          openBrowser: !flags['no-browser'],
+          timeoutMs: flags.timeout * 1000,
+        })
         return
       }
 
       // Interactive: ask user if they have an API key
       if (!isStderrInteractive()) {
-        outputError(new Error('Non-interactive mode requires --api-key flag or api-key argument'))
+        outputError(new Error('Non-interactive mode requires --api-key, an api-key argument, or --oauth.'))
         this.exit(1)
         return
       }
@@ -67,16 +94,17 @@ export default class Login extends BaseCommand {
       const hasKey = await this.promptYesNo('Do you already have an API key? (y/N): ')
 
       if (hasKey) {
-        const apiKey = await this.promptHidden('Enter your DocuTray API key: ')
-        if (!apiKey?.trim()) {
+        const rawKey = await this.promptHidden('Enter your DocuTray API key: ')
+        if (!rawKey?.trim()) {
           outputError(new Error('API key cannot be empty'))
           this.exit(1)
           return
         }
 
-        await this.loginWithApiKey(apiKey.trim(), config)
+        const apiKey = validateApiKey(rawKey)
+        await this.loginWithApiKey(apiKey, config)
       } else {
-        await this.loginWithOAuth(config)
+        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: TTY_MENU_OAUTH_TIMEOUT_MS})
       }
     } catch (error) {
       outputError(error)
@@ -100,31 +128,52 @@ export default class Login extends BaseCommand {
     outputSuccess(data, `Login successful (${maskApiKey(apiKey)})`)
   }
 
-  private async loginWithOAuth(config: Config): Promise<void> {
+  private async loginWithOAuth(config: Config, opts: OAuthLoginOptions): Promise<void> {
     const {codeChallenge, codeVerifier} = generatePKCE()
     const state = crypto.randomUUID()
 
     const {close, port, waitForCallback} = await startCallbackServer()
 
+    // Cleanup on signal so the bound socket doesn't linger and block subsequent logins.
+    const onSignal = (signal: NodeJS.Signals) => {
+      close()
+      process.removeListener('SIGINT', onSignal)
+      process.removeListener('SIGTERM', onSignal)
+      // Re-emit the default behavior: exit non-zero with the conventional signal code.
+      // Using kill on self preserves shell exit-code semantics ($? = 128+signo).
+      process.kill(process.pid, signal)
+    }
+
+    process.once('SIGINT', onSignal)
+    process.once('SIGTERM', onSignal)
+
     try {
       const authorizeUrl = buildAuthorizeUrl(port, state, codeChallenge, config.baseUrl)
 
-      process.stderr.write('Opening browser for authentication...\n')
-      process.stderr.write(`If the browser does not open, visit:\n${authorizeUrl}\n\n`)
+      // Agent-detectable URL line first, before any other status output.
+      process.stderr.write(`Open this URL to authorize: ${authorizeUrl}\n`)
 
-      // Dynamic import for ESM-only 'open' package
-      const {default: open} = await import('open')
-      await open(authorizeUrl)
+      if (opts.openBrowser) {
+        try {
+          const {default: open} = await import('open')
+          await open(authorizeUrl)
+          process.stderr.write('Opening browser for authentication...\n')
+        } catch {
+          // Browser open is best-effort. The URL is already on stderr above.
+        }
+      }
 
-      process.stderr.write('Waiting for authentication (timeout: 120s)...\n')
+      const timeoutSeconds = Math.round(opts.timeoutMs / 1000)
+      process.stderr.write(`Waiting for authentication (timeout: ${timeoutSeconds}s)...\n`)
 
-      const result = await waitForCallback()
+      const result = await waitForCallback(opts.timeoutMs)
 
       // Validate state to prevent CSRF
       if (result.state !== state) {
         throw new Error('State parameter mismatch — possible CSRF attack. Please try again.')
       }
 
+      // Must match the value in buildAuthorizeUrl (and the dashboard allowlist).
       const redirectUri = `http://localhost:${port}/callback`
 
       // Exchange authorization code for access token
@@ -168,6 +217,8 @@ export default class Login extends BaseCommand {
         `Login successful — ${apiKeyResponse.organizationName} (${maskApiKey(apiKeyResponse.apiKey)})`,
       )
     } finally {
+      process.removeListener('SIGINT', onSignal)
+      process.removeListener('SIGTERM', onSignal)
       close()
     }
   }

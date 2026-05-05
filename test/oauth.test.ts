@@ -49,12 +49,23 @@ describe('buildAuthorizeUrl', () => {
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')
     expect(parsed.searchParams.get('scope')).toBe('openid')
   })
+
+  it('uses localhost in the redirect_uri (matches dashboard allowlist)', () => {
+    const url = buildAuthorizeUrl(9876, 'state', 'challenge')
+    expect(url).toContain('redirect_uri=http://localhost:9876/callback')
+  })
 })
 
 describe('startCallbackServer', () => {
-  it('starts server on fixed port 9876', async () => {
+  it('binds default port 9876', async () => {
     const {port, close} = await startCallbackServer()
     expect(port).toBe(9876)
+    close()
+  })
+
+  it('honors an explicit ephemeral preferredPort', async () => {
+    const {port, close} = await startCallbackServer({preferredPort: 0})
+    expect(port).toBeGreaterThan(0)
     close()
   })
 
@@ -87,5 +98,19 @@ describe('startCallbackServer', () => {
     const {close, waitForCallback} = await startCallbackServer()
     await expect(waitForCallback(100)).rejects.toThrow('Authentication timed out')
     close()
+  })
+
+  it('retries to next port on EADDRINUSE when preferredPort is set', async () => {
+    // Bind one server on an arbitrary port, then ask the helper to start on
+    // that same port — it should retry on port+1, port+2, etc.
+    const blocker = await startCallbackServer()
+    try {
+      const {port, close} = await startCallbackServer({preferredPort: blocker.port, retries: 3})
+      expect(port).toBeGreaterThan(blocker.port)
+      expect(port).toBeLessThanOrEqual(blocker.port + 3)
+      close()
+    } finally {
+      blocker.close()
+    }
   })
 })

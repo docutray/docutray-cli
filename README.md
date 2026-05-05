@@ -43,7 +43,7 @@ docutray convert invoice.pdf --type electronic-invoice
 * [`docutray autocomplete`](docs/commands/autocomplete.md) - Display autocomplete installation instructions.
 * [`docutray convert`](docs/commands/convert.md) - Convert a document to structured data using a specified document type schema. Accepts a local file path or a public URL as the source. By default, processing is synchronous — the command waits and returns the extracted data. Use --async for long-running documents to poll for completion with status updates on stderr.
 * [`docutray identify`](docs/commands/identify.md) - Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
-* [`docutray login`](docs/commands/login.md) - Configure your DocuTray API key for authentication. When called without arguments, prompts to choose between pasting an existing API key or authenticating via OAuth2 in the browser. OAuth2 login opens your browser, lets you select an organization, and automatically generates an API key. Credentials are stored in ~/.config/docutray/config.json with restricted file permissions.
+* [`docutray login`](docs/commands/login.md) - Configure your DocuTray API key for authentication. When called without arguments, prompts to choose between pasting an existing API key or authenticating via OAuth2 in the browser. For non-interactive shells (CI, AI coding agents), use --oauth to drive the OAuth flow end-to-end without a TTY: the CLI prints the authorization URL on stderr, opens your browser, waits for the callback, and writes the resulting API key to ~/.config/docutray/config.json.
 * [`docutray logout`](docs/commands/logout.md) - Clear stored credentials by removing the local configuration file. This does not invalidate the API key itself — it only removes it from this machine. Has no effect if you are authenticating via the DOCUTRAY_API_KEY environment variable.
 * [`docutray status`](docs/commands/status.md) - Show current authentication status and configuration. Displays whether you are authenticated, the masked API key, the credential source (environment variable or config file), the API base URL, and the config file path. Useful for verifying your setup before running commands.
 * [`docutray steps`](docs/commands/steps.md) - Execute and monitor document processing steps. Steps are reusable processing pipelines that can be applied to documents for extraction, transformation, and validation.
@@ -67,6 +67,26 @@ export DOCUTRAY_API_KEY=dt_live_abc123
 # All commands will use it automatically
 docutray convert invoice.pdf --type electronic-invoice
 ```
+
+### AI coding agents (Claude Code, Cursor, Codex)
+
+When the CLI runs inside an agent, stdin is not a TTY and the interactive
+prompt is unreachable. Use `--oauth` to drive the full OAuth flow without a
+TTY: the CLI prints the authorization URL on stderr, opens your browser, and
+writes the resulting API key to `~/.config/docutray/config.json`.
+
+```bash
+docutray login --oauth
+# stderr → "Open this URL to authorize: https://app.docutray.com/oauth/..."
+# (your browser opens; authorize there)
+# stdout ← {"message":"Login successful","apiKey":"dt_live_****…","configPath":"…"}
+
+docutray status
+# {"authenticated": true, ...}
+```
+
+Use `--no-browser` to suppress the auto-open (the URL is still printed to
+stderr) and `--timeout <seconds>` to override the 180s default.
 
 ### Multiple environments
 

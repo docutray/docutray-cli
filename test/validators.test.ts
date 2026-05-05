@@ -6,7 +6,7 @@ vi.mock('node:fs', () => ({
 }))
 
 import {existsSync, statSync} from 'node:fs'
-import {parseJsonFlag, validateSource, validateUrl} from '../src/validators.js'
+import {parseJsonFlag, validateApiKey, validateSource, validateUrl} from '../src/validators.js'
 
 const mockExistsSync = vi.mocked(existsSync)
 const mockStatSync = vi.mocked(statSync)
@@ -86,5 +86,71 @@ describe('validateSource', () => {
     mockExistsSync.mockReturnValue(true)
     mockStatSync.mockReturnValue({isDirectory: () => true} as any)
     expect(() => validateSource('./some-directory')).toThrow('Expected a file, got a directory: ./some-directory')
+  })
+})
+
+describe('validateApiKey', () => {
+  it('accepts a real-format key (dt + 64 base64url chars)', () => {
+    // Same shape the dashboard emits: `dt` + 64 URL-safe base64 chars.
+    const key = 'dtUXtMlrFQTPaBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789AbCdEfGhIjKlMnOpQrSt'
+    expect(validateApiKey(key)).toBe(key)
+  })
+
+  it('accepts a legacy dt_live_… style key', () => {
+    const key = 'dt_live_abcDEF0123456789abc'
+    expect(validateApiKey(key)).toBe(key)
+  })
+
+  it('accepts a legacy dt_test_… style key', () => {
+    const key = 'dt_test_xyz0123456789abcdef_-'
+    expect(validateApiKey(key)).toBe(key)
+  })
+
+  it('accepts URL-safe base64 characters', () => {
+    const key = 'dtaA0_-aA0_-aA0_-aA0_-aA0_-'
+    expect(validateApiKey(key)).toBe(key)
+  })
+
+  it('trims surrounding whitespace before validating', () => {
+    const key = 'dt_live_abcDEF0123456789abc'
+    expect(validateApiKey(`  ${key}  `)).toBe(key)
+    expect(validateApiKey(`\n${key}\n`)).toBe(key)
+  })
+
+  it('rejects empty string', () => {
+    expect(() => validateApiKey('')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects whitespace-only string', () => {
+    expect(() => validateApiKey('   ')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects garbage like "2"', () => {
+    expect(() => validateApiKey('2')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects wrong prefix', () => {
+    expect(() => validateApiKey('sk_live_abcDEF0123456789abc')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects "dt" alone (too short)', () => {
+    expect(() => validateApiKey('dt')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects keys shorter than 22 chars total', () => {
+    expect(() => validateApiKey('dtshort1')).toThrow(/^Invalid API key format/)
+    expect(() => validateApiKey('dt_live_short')).toThrow(/^Invalid API key format/)
+  })
+
+  it('rejects non-base64url characters', () => {
+    expect(() => validateApiKey('dt!!!@@@###$$$%%%^^^&&&***')).toThrow(/^Invalid API key format/)
+  })
+
+  it('error message includes a preview of the offending input', () => {
+    expect(() => validateApiKey('garbage-input-12345')).toThrow(/got: garbage-inpu…/)
+  })
+
+  it('error message handles empty input gracefully', () => {
+    expect(() => validateApiKey('')).toThrow(/got: \(empty\)…/)
   })
 })

@@ -1,4 +1,4 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('node:crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:crypto')>()
@@ -71,21 +71,21 @@ describe('login with --api-key flag', () => {
   })
 
   it('saves API key from --api-key flag', async () => {
-    await Login.run(['--api-key', 'dt_live_abc12345'])
+    await Login.run(['--api-key', 'dt_live_abc1234567890ABCDEF'])
     expect(mockWriteConfig).toHaveBeenCalledWith(
-      expect.objectContaining({apiKey: 'dt_live_abc12345'}),
+      expect.objectContaining({apiKey: 'dt_live_abc1234567890ABCDEF'}),
     )
   })
 
   it('saves API key from positional argument', async () => {
-    await Login.run(['dt_live_abc12345'])
+    await Login.run(['dt_live_abc1234567890ABCDEF'])
     expect(mockWriteConfig).toHaveBeenCalledWith(
-      expect.objectContaining({apiKey: 'dt_live_abc12345'}),
+      expect.objectContaining({apiKey: 'dt_live_abc1234567890ABCDEF'}),
     )
   })
 
   it('outputs success with masked key', async () => {
-    await Login.run(['dt_live_abc12345', '--json'])
+    await Login.run(['dt_live_abc1234567890ABCDEF', '--json'])
     const output = stdoutSpy.mock.calls.map(c => c[0] as string).join('')
     const parsed = JSON.parse(output)
     expect(parsed.message).toBe('Login successful')
@@ -93,10 +93,10 @@ describe('login with --api-key flag', () => {
   })
 
   it('saves base-url when provided', async () => {
-    await Login.run(['--api-key', 'dt_live_abc12345', '--base-url', 'https://staging.docutray.com'])
+    await Login.run(['--api-key', 'dt_live_abc1234567890ABCDEF', '--base-url', 'https://staging.docutray.com'])
     expect(mockWriteConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        apiKey: 'dt_live_abc12345',
+        apiKey: 'dt_live_abc1234567890ABCDEF',
         baseUrl: 'https://staging.docutray.com',
       }),
     )
@@ -160,10 +160,10 @@ describe('login with OAuth2 flow', () => {
   it('skips OAuth flow when --api-key flag is provided', async () => {
     setupOAuthMocks()
 
-    await Login.run(['--api-key', 'dt_live_test123'])
+    await Login.run(['--api-key', 'dt_live_test123456789ABCDEF'])
     // With --api-key flag, it goes directly to loginWithApiKey
     expect(mockWriteConfig).toHaveBeenCalledWith(
-      expect.objectContaining({apiKey: 'dt_live_test123'}),
+      expect.objectContaining({apiKey: 'dt_live_test123456789ABCDEF'}),
     )
     expect(mockStartCallbackServer).not.toHaveBeenCalled()
   })
@@ -206,5 +206,229 @@ describe('login with OAuth2 flow', () => {
     } finally {
       process.stderr.isTTY = originalIsTTY
     }
+  })
+})
+
+describe('login --oauth (non-interactive OAuth)', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>
+  let stderrSpy: ReturnType<typeof vi.spyOn>
+  let exitSpy: ReturnType<typeof vi.spyOn>
+  let originalIsTTY: boolean | undefined
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    exitSpy = vi.spyOn(Login.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+    originalIsTTY = process.stderr.isTTY
+    process.stderr.isTTY = false
+  })
+
+  afterEach(() => {
+    process.stderr.isTTY = originalIsTTY as any
+    exitSpy.mockRestore()
+  })
+
+  function happyPathOAuthMocks() {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'}),
+    })
+
+    mockExchangeCodeForToken.mockResolvedValue({
+      access_token: 'oauth-token-123',
+      token_type: 'bearer',
+      expires_in: 3600,
+    })
+
+    mockFetchOrganizations.mockResolvedValue([
+      {id: 'org_abc', name: 'My Organization', slug: 'my-org', role: 'ADMIN'},
+    ])
+
+    mockCreateApiKeyFromToken.mockResolvedValue({
+      apiKey: 'dt_live_newkey123',
+      organizationId: 'org_abc',
+      organizationName: 'My Organization',
+    })
+
+    return {closeFn}
+  }
+
+  it('completes OAuth from non-TTY shell, writes config, prints JSON to stdout', async () => {
+    const {closeFn} = happyPathOAuthMocks()
+
+    await Login.run(['--oauth', '--json'])
+
+    expect(mockStartCallbackServer).toHaveBeenCalled()
+    expect(mockWriteConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: 'dt_live_newkey123',
+        organizationId: 'org_abc',
+        organizationName: 'My Organization',
+      }),
+    )
+    expect(closeFn).toHaveBeenCalled()
+
+    const stdoutOutput = stdoutSpy.mock.calls.map((c) => c[0] as string).join('')
+    const parsed = JSON.parse(stdoutOutput)
+    expect(parsed.message).toBe('Login successful')
+    expect(parsed.organizationName).toBe('My Organization')
+    expect(parsed.apiKey).toContain('****')
+
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('Open this URL to authorize:')
+  })
+
+  it('--oauth uses localhost for the redirect_uri sent to token exchange', async () => {
+    happyPathOAuthMocks()
+    await Login.run(['--oauth'])
+    expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
+      'auth-code',
+      'test-verifier',
+      'http://localhost:54321/callback',
+      undefined,
+    )
+  })
+
+  it('--oauth opens browser by default', async () => {
+    happyPathOAuthMocks()
+    const openMod = (await import('open')) as unknown as {default: ReturnType<typeof vi.fn>}
+    openMod.default.mockClear()
+
+    await Login.run(['--oauth'])
+
+    expect(openMod.default).toHaveBeenCalledTimes(1)
+  })
+
+  it('--oauth --no-browser does not call open but still prints URL', async () => {
+    happyPathOAuthMocks()
+    const openMod = (await import('open')) as unknown as {default: ReturnType<typeof vi.fn>}
+    openMod.default.mockClear()
+
+    await Login.run(['--oauth', '--no-browser'])
+
+    expect(openMod.default).not.toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('Open this URL to authorize:')
+  })
+
+  it('--oauth times out and exits non-zero without writing config', async () => {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockRejectedValue(new Error('Authentication timed out after 1s. Please try again.')),
+    })
+
+    await expect(Login.run(['--oauth', '--timeout', '1', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    expect(closeFn).toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toMatch(/timed out/i)
+  })
+
+  it('--oauth surfaces callback error and does not write config', async () => {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockRejectedValue(new Error('OAuth error: User denied access')),
+    })
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    expect(closeFn).toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('User denied access')
+  })
+
+  it('--oauth combined with --api-key is rejected up front', async () => {
+    await expect(Login.run(['--oauth', '--api-key', 'dt_live_abc1234567890ABCDEF'])).rejects.toThrow('EXIT')
+    expect(mockStartCallbackServer).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('--oauth cannot be combined')
+  })
+
+  it('--oauth combined with positional api-key is rejected up front', async () => {
+    await expect(Login.run(['--oauth', 'dt_live_abc1234567890ABCDEF'])).rejects.toThrow('EXIT')
+    expect(mockStartCallbackServer).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+  })
+
+  it('non-interactive shell with no flags errors with the new message including --oauth', async () => {
+    await expect(Login.run(['--json'])).rejects.toThrow('EXIT')
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('--api-key')
+    expect(stderrOutput).toContain('--oauth')
+    expect(stderrOutput).toContain('an api-key argument')
+  })
+})
+
+describe('login API key validation', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>
+  let stderrSpy: ReturnType<typeof vi.spyOn>
+  let exitSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+    exitSpy = vi.spyOn(Login.prototype, 'exit').mockImplementation(() => {
+      throw new Error('EXIT')
+    })
+  })
+
+  afterEach(() => {
+    exitSpy.mockRestore()
+  })
+
+  it('accepts a real-looking key via positional arg (regression)', async () => {
+    await Login.run(['dt_live_REAL_LOOKING_KEY_0123'])
+    expect(mockWriteConfig).toHaveBeenCalledWith(
+      expect.objectContaining({apiKey: 'dt_live_REAL_LOOKING_KEY_0123'}),
+    )
+  })
+
+  it('rejects garbage positional arg without writing config', async () => {
+    await expect(Login.run(['2'])).rejects.toThrow('EXIT')
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('Invalid API key format')
+  })
+
+  it('rejects wrong-prefix --api-key value without writing config', async () => {
+    await expect(Login.run(['--api-key', 'sk_live_abcDEF0123456789abc'])).rejects.toThrow('EXIT')
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+  })
+
+  it('rejects empty --api-key value without writing config', async () => {
+    await expect(Login.run(['--api-key', ''])).rejects.toThrow('EXIT')
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+  })
+})
+
+describe('login --help (static metadata)', () => {
+  it('exposes --oauth, --no-browser, --timeout flags', () => {
+    const flags = Login.flags as Record<string, unknown>
+    expect(flags).toHaveProperty('oauth')
+    expect(flags).toHaveProperty('no-browser')
+    expect(flags).toHaveProperty('timeout')
+  })
+
+  it('includes an example invoking docutray login --oauth', () => {
+    const examples = Login.examples as Array<{command: string; description: string}>
+    const oauthExample = examples.find((e) => /login --oauth(?!\s*--no-browser)/.test(e.command))
+    expect(oauthExample).toBeDefined()
+  })
+
+  it('description mentions OAuth as the agent-friendly path', () => {
+    expect(Login.description).toMatch(/--oauth/)
   })
 })
