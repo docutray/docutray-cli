@@ -15,7 +15,15 @@ export function isStderrInteractive(): boolean {
 }
 
 export function outputJson(data: unknown): void {
-  process.stdout.write(JSON.stringify(data, null, 2) + '\n')
+  process.stdout.write(JSON.stringify(data, sanitizeReplacer, 2) + '\n')
+}
+
+// Strips internal SDK fields that may carry credentials (e.g. Page.pageOptions
+// from the docutray SDK leaks the apiKey). Defense-in-depth so any future
+// command that returns an SDK object with these fields stays safe.
+function sanitizeReplacer(key: string, value: unknown): unknown {
+  if (key === 'pageOptions') return undefined
+  return value
 }
 
 export function outputError(error: unknown): void {

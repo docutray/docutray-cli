@@ -47,7 +47,8 @@ export default class TypesList extends BaseCommand {
       const totalPages = Math.max(1, Math.ceil(count / flags.limit))
       const footer = `Page ${flags.page} of ${totalPages} (${count} results)`
 
-      outputList(result, rows, ['code', 'name', 'public', 'draft'], footer)
+      const payload = {data: result.data, pagination: (result as unknown as {pagination?: unknown}).pagination}
+      outputList(payload, rows, ['code', 'name', 'public', 'draft'], footer)
     } catch (error) {
       outputError(error)
       this.exit(1)
