@@ -1,4 +1,5 @@
 import {Flags} from '@oclif/core'
+import type {ConversionMode} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -40,7 +41,7 @@ export default class TypesCreate extends BaseCommand {
       const client = createClient()
       const result = await client.documentTypes.create({
         codeType: flags.code,
-        conversionMode: flags['conversion-mode'] as 'json' | 'toon' | 'multi_prompt' | undefined,
+        conversionMode: flags['conversion-mode'] as ConversionMode | undefined,
         description: flags.description,
         identifyPromptHints: flags['identify-hints'],
         isDraft: flags.publish ? false : flags.draft,
@@ -50,16 +51,12 @@ export default class TypesCreate extends BaseCommand {
         promptHints: flags['prompt-hints'],
       })
 
-      // The API returns `conversionMode` on the DocumentType, but `docutray@0.1.3`
-      // does not yet expose it on the SDK type. Tracked in docutray-node#21;
-      // remove this cast once a release including that fix is pulled in.
-      const conversionMode = (result as unknown as {conversionMode?: string}).conversionMode
       outputKeyValue(result, [
         {key: 'Code', value: result.codeType},
         {key: 'Name', value: result.name},
         {key: 'Description', value: result.description || '(none)'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
-        {key: 'Mode', value: conversionMode && conversionMode.trim() !== '' ? conversionMode : 'json'},
+        {key: 'Mode', value: result.conversionMode || 'json'},
       ])
 
       outputSuccess({codeType: result.codeType, id: result.id}, `Created document type "${result.codeType}"`)

@@ -1,5 +1,5 @@
 import {Args, Flags} from '@oclif/core'
-import type {DocumentTypeUpdateParams} from 'docutray'
+import type {ConversionMode, DocumentTypeUpdateParams} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -46,7 +46,7 @@ export default class TypesUpdate extends BaseCommand {
       if (flags.schema !== undefined) params.jsonSchema = parseSchema(flags.schema)
       if (flags['prompt-hints'] !== undefined) params.promptHints = flags['prompt-hints']
       if (flags['identify-hints'] !== undefined) params.identifyPromptHints = flags['identify-hints']
-      if (flags['conversion-mode'] !== undefined) params.conversionMode = flags['conversion-mode'] as 'json' | 'toon' | 'multi_prompt'
+      if (flags['conversion-mode'] !== undefined) params.conversionMode = flags['conversion-mode'] as ConversionMode
       if (flags['keep-ordering'] !== undefined) params.keepPropertyOrdering = flags['keep-ordering']
       if (flags.publish) params.isDraft = false
       else if (flags.draft !== undefined) params.isDraft = flags.draft
