@@ -51,8 +51,8 @@ export default class TypesCreate extends BaseCommand {
       })
 
       // The API returns `conversionMode` on the DocumentType, but `docutray@0.1.3`
-      // does not yet expose it on the SDK type. Read it through an unknown cast
-      // until the SDK declaration catches up.
+      // does not yet expose it on the SDK type. Tracked in docutray-node#21;
+      // remove this cast once a release including that fix is pulled in.
       const conversionMode = (result as unknown as {conversionMode?: string}).conversionMode
       outputKeyValue(result, [
         {key: 'Code', value: result.codeType},
