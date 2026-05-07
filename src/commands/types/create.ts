@@ -1,4 +1,5 @@
 import {Flags} from '@oclif/core'
+import type {ConversionMode} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -6,11 +7,12 @@ import {outputError, outputKeyValue, outputSuccess, setForceJson} from '../../ou
 import {parseSchema} from '../../parse-schema.js'
 
 export default class TypesCreate extends BaseCommand {
-  static description = `Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string.`
+  static description = `Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string. Files exported via "types export" are also accepted: the inner jsonSchema is extracted automatically.`
 
   static examples = [
     {command: '<%= config.bin %> types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json', description: 'Create from a schema file'},
     {command: '<%= config.bin %> types create --name "Invoice" --code invoice --description "Standard invoice" --schema \'{"type":"object","properties":{"total":{"type":"number"}}}\'', description: 'Create with inline JSON schema'},
+    {command: '<%= config.bin %> types export factura -o factura.json && <%= config.bin %> types create --name "Factura Copy" --code factura_copy --description "Copy of factura" --schema factura.json', description: 'Round-trip: export an existing type and re-create it'},
     {command: '<%= config.bin %> types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json --publish', description: 'Create and publish immediately'},
     {command: '<%= config.bin %> types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json --conversion-mode toon', description: 'Create with a specific conversion mode'},
   ]
@@ -39,7 +41,7 @@ export default class TypesCreate extends BaseCommand {
       const client = createClient()
       const result = await client.documentTypes.create({
         codeType: flags.code,
-        conversionMode: flags['conversion-mode'] as 'json' | 'toon' | 'multi_prompt' | undefined,
+        conversionMode: flags['conversion-mode'] as ConversionMode | undefined,
         description: flags.description,
         identifyPromptHints: flags['identify-hints'],
         isDraft: flags.publish ? false : flags.draft,
@@ -54,7 +56,7 @@ export default class TypesCreate extends BaseCommand {
         {key: 'Name', value: result.name},
         {key: 'Description', value: result.description || '(none)'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
-        {key: 'Mode', value: (() => { const mode = (result as unknown as Record<string, unknown>).conversionMode; return typeof mode === 'string' && mode.trim() !== '' ? mode : 'json'; })()},
+        {key: 'Mode', value: result.conversionMode || 'json'},
       ])
 
       outputSuccess({codeType: result.codeType, id: result.id}, `Created document type "${result.codeType}"`)
