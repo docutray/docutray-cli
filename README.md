@@ -51,6 +51,45 @@ docutray convert invoice.pdf --type electronic-invoice
 
 <!-- commandsstop -->
 
+## Export specs
+
+A document type can carry a **conversion spec** — the mapping from extracted JSON
+to CSV/Excel columns used by tray export. It comes in two shapes: single-table
+(`{"columns": [...]}`) or multi-sheet (`{"sheets": [{"name": "...", "columns": [...]}]}`).
+
+```bash
+# Create a type with an export spec (file path or inline JSON)
+docutray types create --name "Invoice" --code invoice --description "..." \
+  --schema schema.json --conversion-spec spec.json
+
+# Replace the spec on an existing type
+docutray types update invoice --conversion-spec spec.json
+
+# Remove the spec
+docutray types update invoice --no-conversion-spec
+
+# Inspect it
+docutray types get invoice            # → "Export spec: 2 sheets, 14 columns"
+docutray types export invoice | jq .conversionSpec
+```
+
+`--conversion-spec` also accepts a full `types export` payload and pulls the
+`conversionSpec` out of it. And since `types export` output includes the spec,
+the round-trip carries it over without extra flags:
+
+```bash
+docutray types export factura -o factura.json
+docutray types create --name "Copia" --code factura_copy \
+  --description "Copy" --schema factura.json   # → schema + export spec
+```
+
+`types update --schema` deliberately does *not* carry the spec: an update only
+touches the fields you name, so use `--conversion-spec` to change it.
+
+> Requires a DocuTray API deployment that supports `conversionSpec` on document
+> types. Against an older deployment the field is accepted and silently ignored —
+> run `docutray types get <code>` to confirm the spec was stored.
+
 ## Authentication
 
 The CLI resolves the API key in this order:

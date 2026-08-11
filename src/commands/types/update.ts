@@ -4,7 +4,7 @@ import type {ConversionMode, DocumentTypeUpdateParams} from 'docutray'
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
 import {outputError, outputKeyValue, outputSuccess, setForceJson} from '../../output.js'
-import {parseSchema} from '../../parse-schema.js'
+import {parseConversionSpec, parseSchema} from '../../parse-schema.js'
 import {resolveDocumentTypeId} from '../../resolve-type.js'
 
 export default class TypesUpdate extends BaseCommand {
@@ -19,19 +19,23 @@ export default class TypesUpdate extends BaseCommand {
     {command: '<%= config.bin %> types update invoice --schema new-schema.json', description: 'Update the schema from a file'},
     {command: '<%= config.bin %> types update invoice --prompt-hints "Use dd/mm/yyyy for dates"', description: 'Update prompt hints'},
     {command: '<%= config.bin %> types update invoice --publish', description: 'Publish a draft type'},
+    {command: '<%= config.bin %> types update invoice --conversion-spec spec.json', description: 'Replace the export spec (JSON → CSV/Excel column mapping)'},
+    {command: '<%= config.bin %> types update invoice --no-conversion-spec', description: 'Remove the export spec from the type'},
   ]
 
   static flags = {
     'conversion-mode': Flags.string({description: 'Conversion mode', options: ['json', 'toon', 'multi_prompt']}),
+    'conversion-spec': Flags.string({description: 'Export spec (JSON → CSV/Excel column mapping): file path or inline JSON. Accepts a bare spec ({"columns":[...]} or {"sheets":[...]}) or a full "types export" payload.', exclusive: ['no-conversion-spec']}),
     description: Flags.string({description: 'New description'}),
     draft: Flags.boolean({allowNo: true, description: 'Set draft status'}),
     'identify-hints': Flags.string({description: 'Hints for automatic document identification'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     'keep-ordering': Flags.boolean({allowNo: true, description: 'Preserve property ordering in extraction output'}),
     name: Flags.string({description: 'New name'}),
+    'no-conversion-spec': Flags.boolean({default: false, description: 'Remove the export spec from the document type', exclusive: ['conversion-spec']}),
     'prompt-hints': Flags.string({description: 'General extraction prompt hints'}),
     publish: Flags.boolean({default: false, description: 'Publish immediately (sets draft to false)', exclusive: ['draft']}),
-    schema: Flags.string({description: 'New JSON schema: file path or inline JSON string'}),
+    schema: Flags.string({description: 'New JSON schema: file path or inline JSON string. Unlike "types create", a conversionSpec embedded in a "types export" payload is ignored — use --conversion-spec to change it.'}),
   }
 
   async run(): Promise<void> {
@@ -48,6 +52,8 @@ export default class TypesUpdate extends BaseCommand {
       if (flags['identify-hints'] !== undefined) params.identifyPromptHints = flags['identify-hints']
       if (flags['conversion-mode'] !== undefined) params.conversionMode = flags['conversion-mode'] as ConversionMode
       if (flags['keep-ordering'] !== undefined) params.keepPropertyOrdering = flags['keep-ordering']
+      if (flags['conversion-spec'] !== undefined) params.conversionSpec = parseConversionSpec(flags['conversion-spec'])
+      else if (flags['no-conversion-spec']) params.conversionSpec = null
       if (flags.publish) params.isDraft = false
       else if (flags.draft !== undefined) params.isDraft = flags.draft
 

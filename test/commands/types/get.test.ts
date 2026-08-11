@@ -9,7 +9,7 @@ import TypesGet from '../../../src/commands/types/get.js'
 
 const mockCreateClient = vi.mocked(createClient)
 
-function mockClient() {
+function mockClient(overrides: Record<string, unknown> = {}) {
   const client = {
     documentTypes: {
       // SDK 0.1.3+: documentTypes.get returns the unwrapped DocumentType
@@ -31,6 +31,7 @@ function mockClient() {
         name: 'Invoice',
         status: 'PUBLISHED',
         updatedAt: '2026-01-02T00:00:00.000Z',
+        ...overrides,
       }),
       list: vi.fn().mockResolvedValue({
         data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
@@ -103,6 +104,103 @@ describe('types get', () => {
     expect(parsed.codeType).toBe('invoice')
     expect(parsed.jsonSchema).toBeDefined()
     expect(parsed.jsonSchema.properties).toHaveProperty('total')
+  })
+
+  describe('export spec summary', () => {
+    async function runInTty(overrides: Record<string, unknown>): Promise<string> {
+      mockClient(overrides)
+      const originalIsTTY = process.stdout.isTTY
+      Object.defineProperty(process.stdout, 'isTTY', {configurable: true, value: true})
+
+      try {
+        await TypesGet.run(['invoice'])
+        return stdoutSpy.mock.calls.map(([msg]) => String(msg)).join('')
+      } finally {
+        Object.defineProperty(process.stdout, 'isTTY', {configurable: true, value: originalIsTTY})
+      }
+    }
+
+    it('summarizes a legacy (single-table) spec', async () => {
+      const output = await runInTty({
+        conversionSpec: {
+          columns: [
+            {header: 'Total', jsonPath: '$.total'},
+            {header: 'Issuer', jsonPath: '$.issuer'},
+          ],
+        },
+      })
+
+      expect(output).toMatch(/Export spec:\s+2 columns/)
+    })
+
+    it('summarizes a multi-sheet spec with sheet and column counts', async () => {
+      const output = await runInTty({
+        conversionSpec: {
+          sheets: [
+            {columns: [{header: 'Total', jsonPath: '$.total'}], name: 'Header'},
+            {
+              columns: [
+                {header: 'Item', jsonPath: '$.items[*].name'},
+                {header: 'Qty', jsonPath: '$.items[*].qty'},
+              ],
+              name: 'Items',
+            },
+          ],
+        },
+      })
+
+      expect(output).toMatch(/Export spec:\s+2 sheets, 3 columns/)
+    })
+
+    it('uses the singular form for a one-column spec', async () => {
+      const output = await runInTty({conversionSpec: {columns: [{header: 'Total', jsonPath: '$.total'}]}})
+
+      expect(output).toMatch(/Export spec:\s+1 column\b/)
+    })
+
+    it('degrades to (present) on an unrecognized shape instead of failing the command', async () => {
+      const output = await runInTty({conversionSpec: {sheets: {Items: [{header: 'Total'}]}}})
+
+      expect(output).toMatch(/Export spec:\s+\(present\)/)
+      // The rest of the output must survive a spec the CLI cannot summarize.
+      expect(output).toContain('invoice')
+      expect(output).toMatch(/Schema:\s+2 top-level fields/)
+    })
+
+    it('degrades to (present) when columns is not an array', async () => {
+      const output = await runInTty({conversionSpec: {columns: {Total: '$.total'}}})
+
+      expect(output).toMatch(/Export spec:\s+\(present\)/)
+    })
+
+    it('tolerates a sheet with no columns array', async () => {
+      const output = await runInTty({conversionSpec: {sheets: [{name: 'Empty'}]}})
+
+      expect(output).toMatch(/Export spec:\s+1 sheet, 0 columns/)
+    })
+
+    it('shows (none) when the spec is null', async () => {
+      const output = await runInTty({conversionSpec: null})
+
+      expect(output).toMatch(/Export spec:\s+\(none\)/)
+    })
+
+    it('shows (none) when the field is absent', async () => {
+      const output = await runInTty({})
+
+      expect(output).toMatch(/Export spec:\s+\(none\)/)
+    })
+  })
+
+  it('emits conversionSpec verbatim in JSON without derived fields', async () => {
+    const spec = {sheets: [{columns: [{header: 'Total', jsonPath: '$.total'}], name: 'Header'}]}
+    mockClient({conversionSpec: spec})
+
+    await TypesGet.run(['invoice', '--json'])
+
+    const parsed = JSON.parse(stdoutSpy.mock.calls.map(([msg]) => String(msg)).join(''))
+    expect(parsed.conversionSpec).toEqual(spec)
+    expect(parsed).not.toHaveProperty('Export spec')
   })
 
   it('shows error when codeType not found', async () => {

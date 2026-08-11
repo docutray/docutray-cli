@@ -59,4 +59,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/convert
 ```
 
-_See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/convert.ts)_
+_See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/convert.ts)_

@@ -128,6 +128,72 @@ describe('types update', () => {
     exitSpy.mockRestore()
   })
 
+  describe('conversion spec', () => {
+    const LEGACY_SPEC = {columns: [{header: 'Total', jsonPath: '$.total'}]}
+
+    it('sets the spec from an inline value', async () => {
+      const client = mockClient()
+
+      await TypesUpdate.run(['invoice', '--conversion-spec', JSON.stringify(LEGACY_SPEC)])
+
+      expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {
+        conversionSpec: LEGACY_SPEC,
+      })
+    })
+
+    it('sets the spec from a file', async () => {
+      const client = mockClient()
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(JSON.stringify(LEGACY_SPEC))
+
+      await TypesUpdate.run(['invoice', '--conversion-spec', 'spec.json'])
+
+      expect(mockReadFileSync).toHaveBeenCalledWith('spec.json', 'utf8')
+      expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {
+        conversionSpec: LEGACY_SPEC,
+      })
+    })
+
+    it('clears the spec with --no-conversion-spec', async () => {
+      const client = mockClient()
+
+      await TypesUpdate.run(['invoice', '--no-conversion-spec'])
+
+      expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {conversionSpec: null})
+    })
+
+    it('rejects both conversion spec flags at once', async () => {
+      mockClient()
+
+      await expect(
+        TypesUpdate.run(['invoice', '--conversion-spec', JSON.stringify(LEGACY_SPEC), '--no-conversion-spec']),
+      ).rejects.toThrow(/cannot also be provided|exclusive/i)
+    })
+
+    it('ignores a conversionSpec embedded in an exported --schema payload', async () => {
+      const client = mockClient()
+      const exported = {conversionSpec: LEGACY_SPEC, jsonSchema: {properties: {}, type: 'object'}}
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(JSON.stringify(exported))
+
+      await TypesUpdate.run(['invoice', '--schema', 'export.json'])
+
+      expect(client.documentTypes.update).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl', {
+        jsonSchema: exported.jsonSchema,
+      })
+    })
+
+    it('fails without calling the API when the spec is malformed', async () => {
+      const client = mockClient()
+
+      await expect(TypesUpdate.run(['invoice', '--conversion-spec', '{"foo":1}'])).rejects.toThrow('EXIT')
+
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('expected an object with'))
+      expect(client.documentTypes.update).not.toHaveBeenCalled()
+      exitSpy.mockRestore()
+    })
+  })
+
   it('handles API errors', async () => {
     const client = mockClient()
     client.documentTypes.update.mockRejectedValue(new Error('Document type not found'))

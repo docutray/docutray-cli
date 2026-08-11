@@ -1,4 +1,5 @@
 import {Args, Flags} from '@oclif/core'
+import {type ConversionSpec, isMultiSheetConversionSpec} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -38,12 +39,35 @@ export default class TypesGet extends BaseCommand {
         {key: 'Public', value: result.isPublic ? 'yes' : 'no'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
         {key: 'Schema', value: describeSchema(result.jsonSchema)},
+        {key: 'Export spec', value: describeConversionSpec(result.conversionSpec)},
       ])
     } catch (error) {
       outputError(error)
       this.exit(1)
     }
   }
+}
+
+function countOf(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`
+}
+
+// Falls back to '(present)' rather than throwing on a shape this CLI does not
+// recognize: a cosmetic summary line must never cost the user the whole output.
+function describeConversionSpec(spec: ConversionSpec | null | undefined): string {
+  if (!spec) return '(none)'
+
+  if (isMultiSheetConversionSpec(spec)) {
+    if (!Array.isArray(spec.sheets)) return '(present)'
+    const columns = spec.sheets.reduce(
+      (total, sheet) => total + (Array.isArray(sheet?.columns) ? sheet.columns.length : 0),
+      0,
+    )
+    return `${countOf(spec.sheets.length, 'sheet')}, ${countOf(columns, 'column')}`
+  }
+
+  if (!Array.isArray(spec.columns)) return '(present)'
+  return countOf(spec.columns.length, 'column')
 }
 
 function describeSchema(jsonSchema: Record<string, unknown> | null | undefined): string {
