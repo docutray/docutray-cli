@@ -183,6 +183,7 @@ npm run docs:generate    # Regenerate command reference docs
 - [Document types guide](docs/guides/document-types.md)
 - [AI agent usage guide](docs/guides/ai-agent-usage.md)
 - [Command reference](docs/commands/)
+- [Changelog](CHANGELOG.md)
 
 ## Links
 
