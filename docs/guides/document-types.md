@@ -173,6 +173,34 @@ docutray types create --name "Invoice" --code invoice_toon --description "Invoic
 docutray types create --name "Invoice" --code invoice_multi --description "Invoice multi" --schema schema.json --conversion-mode multi_prompt
 ```
 
+### Export specs
+
+A document type can carry a conversion spec — the mapping from extracted JSON to
+CSV/Excel columns used by tray export. It comes in two shapes, single-table and
+multi-sheet:
+
+```json
+{"columns": [{"header": "Total", "jsonPath": "$.total"}]}
+```
+
+```json
+{"sheets": [{"name": "Items", "columns": [{"header": "Item", "jsonPath": "$.items[*].name"}]}]}
+```
+
+Pass it as a file path or inline JSON:
+
+```bash
+docutray types create --name "Invoice" --code invoice --description "Invoice" \
+  --schema schema.json --conversion-spec spec.json
+```
+
+`--conversion-spec` also accepts a full `types export` payload and pulls the
+`conversionSpec` out of it.
+
+Requires a DocuTray API deployment that supports `conversionSpec` on document
+types. Against an older deployment the field is accepted and silently ignored —
+run `docutray types get <code>` to confirm the spec was stored.
+
 ### Prompt hints
 
 Guide the extraction with custom hints:
@@ -239,6 +267,12 @@ docutray types update invoice --prompt-hints "Use dd/mm/yyyy format for dates"
 # Publish a draft
 docutray types update invoice --publish
 
+# Replace the export spec
+docutray types update invoice --conversion-spec spec.json
+
+# Remove the export spec
+docutray types update invoice --no-conversion-spec
+
 # Update multiple fields at once
 docutray types update invoice \
   --name "Commercial Invoice v2" \
@@ -248,6 +282,10 @@ docutray types update invoice \
 ```
 
 Note: the `codeType` identifier cannot be changed after creation.
+
+Unlike `types create`, `types update --schema` ignores a `conversionSpec`
+embedded in a `types export` payload — an update only touches the fields you
+name. Use `--conversion-spec` to change it.
 
 ## Common workflows
 
