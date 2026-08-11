@@ -158,6 +158,27 @@ describe('types get', () => {
       expect(output).toMatch(/Export spec:\s+1 column\b/)
     })
 
+    it('degrades to (present) on an unrecognized shape instead of failing the command', async () => {
+      const output = await runInTty({conversionSpec: {sheets: {Items: [{header: 'Total'}]}}})
+
+      expect(output).toMatch(/Export spec:\s+\(present\)/)
+      // The rest of the output must survive a spec the CLI cannot summarize.
+      expect(output).toContain('invoice')
+      expect(output).toMatch(/Schema:\s+2 top-level fields/)
+    })
+
+    it('degrades to (present) when columns is not an array', async () => {
+      const output = await runInTty({conversionSpec: {columns: {Total: '$.total'}}})
+
+      expect(output).toMatch(/Export spec:\s+\(present\)/)
+    })
+
+    it('tolerates a sheet with no columns array', async () => {
+      const output = await runInTty({conversionSpec: {sheets: [{name: 'Empty'}]}})
+
+      expect(output).toMatch(/Export spec:\s+1 sheet, 0 columns/)
+    })
+
     it('shows (none) when the spec is null', async () => {
       const output = await runInTty({conversionSpec: null})
 

@@ -39,9 +39,9 @@ export default class TypesCreate extends BaseCommand {
 
     try {
       const {conversionSpec: embeddedSpec, jsonSchema} = parseSchemaPayload(flags.schema)
-      const conversionSpec = flags['conversion-spec']
-        ? parseConversionSpec(flags['conversion-spec'])
-        : embeddedSpec
+      const conversionSpec = flags['conversion-spec'] === undefined
+        ? embeddedSpec
+        : parseConversionSpec(flags['conversion-spec'])
 
       const client = createClient()
       const result = await client.documentTypes.create({

@@ -219,11 +219,20 @@ describe('parseSchemaPayload', () => {
     expect(parseSchemaPayload(JSON.stringify(schema))).toEqual({jsonSchema: schema})
   })
 
-  it('rejects a malformed conversionSpec inside an export payload', () => {
-    const payload = {conversionSpec: {foo: 1}, jsonSchema: {type: 'object'}}
-    expect(() => parseSchemaPayload(JSON.stringify(payload))).toThrow(
-      'Invalid conversion spec in schema payload: expected an object with "columns" or "sheets"',
-    )
+  it('forwards an embedded spec shape it does not recognize, verbatim', () => {
+    // The payload came from the API: an unknown shape must round-trip rather
+    // than block the create. The API validates it and is the source of truth.
+    const payload = {conversionSpec: {tables: [{name: 'Items'}]}, jsonSchema: {type: 'object'}}
+
+    expect(parseSchemaPayload(JSON.stringify(payload))).toEqual({
+      conversionSpec: {tables: [{name: 'Items'}]},
+      jsonSchema: {type: 'object'},
+    })
+  })
+
+  it('omits a non-object embedded spec', () => {
+    const payload = {conversionSpec: 'not-a-spec', jsonSchema: {type: 'object'}}
+    expect(parseSchemaPayload(JSON.stringify(payload))).toEqual({jsonSchema: {type: 'object'}})
   })
 
   it('keeps parseSchema error messages', () => {

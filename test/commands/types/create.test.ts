@@ -204,6 +204,51 @@ describe('types create', () => {
       )
     })
 
+    it('lets an explicit --conversion-spec win even when the embedded one is unrecognized', async () => {
+      const client = mockClient()
+      const override = {columns: [{header: 'Issuer', jsonPath: '$.issuer'}]}
+      mockExistsSync.mockImplementation((path) => path === 'factura.json')
+      mockReadFileSync.mockReturnValue(
+        JSON.stringify({conversionSpec: {tables: []}, jsonSchema: {type: 'object'}}),
+      )
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json', '--conversion-spec', JSON.stringify(override)])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(
+        expect.objectContaining({conversionSpec: override}),
+      )
+    })
+
+    it('does not reject a round-trip whose embedded spec shape is unrecognized', async () => {
+      const client = mockClient()
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(
+        JSON.stringify({conversionSpec: {tables: []}, jsonSchema: {type: 'object'}}),
+      )
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json'])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(
+        expect.objectContaining({conversionSpec: {tables: []}}),
+      )
+    })
+
+    it('fails loudly on an empty --conversion-spec instead of falling back', async () => {
+      const client = mockClient()
+      mockExistsSync.mockImplementation((path) => path === 'factura.json')
+      mockReadFileSync.mockReturnValue(
+        JSON.stringify({conversionSpec: LEGACY_SPEC, jsonSchema: {type: 'object'}}),
+      )
+
+      await expect(
+        TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json', '--conversion-spec', '']),
+      ).rejects.toThrow('EXIT')
+
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid conversion spec'))
+      expect(client.documentTypes.create).not.toHaveBeenCalled()
+      exitSpy.mockRestore()
+    })
+
     it('omits the key when the export payload has no spec', async () => {
       const client = mockClient()
       mockExistsSync.mockReturnValue(true)

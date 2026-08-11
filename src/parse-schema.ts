@@ -86,17 +86,19 @@ export function parseSchema(input: string): Record<string, unknown> {
  * Parses a `--schema` value, additionally surfacing the `conversionSpec`
  * carried by a full `types export` payload so `types create` can reproduce an
  * exported type in one shot.
+ *
+ * The embedded spec is forwarded verbatim without the shape check applied to
+ * user-typed `--conversion-spec` input: it came from the API, so a shape this
+ * CLI does not recognize must still round-trip instead of blocking the create.
  */
 export function parseSchemaPayload(input: string): {conversionSpec?: ConversionSpec; jsonSchema: Record<string, unknown>} {
   const parsed = loadJson(input, 'schema')
   const jsonSchema = unwrapSchema(parsed)
 
-  const obj = asPlainObject(parsed)
   // Only a wrapped payload carries a spec: a bare JSON Schema never does.
+  const obj = asPlainObject(parsed)
   const isWrapped = obj !== undefined && asPlainObject(obj.jsonSchema) !== undefined
-  if (isWrapped && obj.conversionSpec !== null && obj.conversionSpec !== undefined) {
-    return {conversionSpec: asConversionSpec(obj.conversionSpec, 'conversion spec in schema payload'), jsonSchema}
-  }
+  const embedded = isWrapped ? asPlainObject(obj.conversionSpec) : undefined
 
-  return {jsonSchema}
+  return embedded ? {conversionSpec: embedded as unknown as ConversionSpec, jsonSchema} : {jsonSchema}
 }
