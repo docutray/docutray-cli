@@ -11,18 +11,21 @@ Manage document types (extraction schemas). Document types define the fields and
 
 ## `docutray types create`
 
-Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string.
+Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string. Files exported via "types export" are also accepted: the inner jsonSchema is extracted automatically.
 
 ```
 USAGE
   $ docutray types:create --code <value> --description <value> --name <value> --schema <value> [--conversion-mode
-    json|toon|multi_prompt] [--identify-hints <value>] [--json] [--keep-ordering] [--prompt-hints <value>] [--publish |
-    --draft]
+    json|toon|multi_prompt] [--conversion-spec <value>] [--identify-hints <value>] [--json] [--keep-ordering]
+    [--prompt-hints <value>] [--publish | --draft]
 
 FLAGS
   --code=<value>              (required) Unique code identifier (lowercase, numbers, underscores)
   --conversion-mode=<option>  Conversion mode
                               <options: json|toon|multi_prompt>
+  --conversion-spec=<value>   Export spec (JSON → CSV/Excel column mapping): file path or inline JSON. Accepts a bare
+                              spec ({"columns":[...]} or {"sheets":[...]}) or a full "types export" payload. Takes
+                              precedence over a spec embedded in --schema.
   --description=<value>       (required) Description of the document type
   --[no-]draft                Create as draft (default: true)
   --identify-hints=<value>    Hints for automatic document identification
@@ -31,11 +34,13 @@ FLAGS
   --name=<value>              (required) Document type name
   --prompt-hints=<value>      General extraction prompt hints
   --publish                   Publish immediately (equivalent to --no-draft)
-  --schema=<value>            (required) JSON schema: file path or inline JSON string
+  --schema=<value>            (required) JSON schema: file path or inline JSON string. When given a full "types export"
+                              payload, its conversionSpec is carried over too.
 
 DESCRIPTION
   Create a new document type. Defines an extraction schema that DocuTray uses when converting documents. Requires a
-  name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string.
+  name, code, description, and JSON schema. The schema can be provided as a file path or inline JSON string. Files
+  exported via "types export" are also accepted: the inner jsonSchema is extracted automatically.
 
 EXAMPLES
   Create from a schema file
@@ -47,6 +52,11 @@ EXAMPLES
     $ docutray types create --name "Invoice" --code invoice --description "Standard invoice" --schema \
       '{"type":"object","properties":{"total":{"type":"number"}}}'
 
+  Round-trip: export an existing type and re-create it (schema and export spec are carried over)
+
+    $ docutray types export factura -o factura.json && docutray types create --name "Factura Copy" --code \
+      factura_copy --description "Copy of factura" --schema factura.json
+
   Create and publish immediately
 
     $ docutray types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json \
@@ -57,11 +67,16 @@ EXAMPLES
     $ docutray types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json \
       --conversion-mode toon
 
+  Create with an export spec (JSON → CSV/Excel column mapping)
+
+    $ docutray types create --name "Invoice" --code invoice --description "Standard invoice" --schema schema.json \
+      --conversion-spec spec.json
+
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/create
 ```
 
-_See code: [src/commands/types/create.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/types/create.ts)_
+_See code: [src/commands/types/create.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/types/create.ts)_
 
 ## `docutray types export CODE`
 
@@ -105,7 +120,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/export
 ```
 
-_See code: [src/commands/types/export.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/types/export.ts)_
+_See code: [src/commands/types/export.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/types/export.ts)_
 
 ## `docutray types get CODE`
 
@@ -130,19 +145,19 @@ EXAMPLES
 
     $ docutray types get electronic-invoice
 
-  Output full JSON (includes field schema)
+  Output full JSON (includes JSON Schema)
 
     $ docutray types get electronic-invoice --json
 
-  Extract just the field schema (useful for scripts)
+  Extract just the JSON Schema (useful for scripts)
 
-    $ docutray types get electronic-invoice | jq .fields
+    $ docutray types get electronic-invoice | jq .jsonSchema
 
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/get
 ```
 
-_See code: [src/commands/types/get.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/types/get.ts)_
+_See code: [src/commands/types/get.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/types/get.ts)_
 
 ## `docutray types list`
 
@@ -188,7 +203,7 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/list
 ```
 
-_See code: [src/commands/types/list.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/types/list.ts)_
+_See code: [src/commands/types/list.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/types/list.ts)_
 
 ## `docutray types update CODE`
 
@@ -196,9 +211,9 @@ Update an existing document type. Allows modifying name, description, schema, pr
 
 ```
 USAGE
-  $ docutray types:update CODE [--conversion-mode json|toon|multi_prompt] [--description <value>]
-    [--identify-hints <value>] [--json] [--keep-ordering] [--name <value>] [--prompt-hints <value>] [--publish |
-    --draft] [--schema <value>]
+  $ docutray types:update CODE [--conversion-mode json|toon|multi_prompt] [--conversion-spec <value> |
+    --no-conversion-spec] [--description <value>] [--identify-hints <value>] [--json] [--keep-ordering] [--name <value>]
+    [--prompt-hints <value>] [--publish | --draft] [--schema <value>]
 
 ARGUMENTS
   CODE  Document type code to update
@@ -206,15 +221,19 @@ ARGUMENTS
 FLAGS
   --conversion-mode=<option>  Conversion mode
                               <options: json|toon|multi_prompt>
+  --conversion-spec=<value>   Export spec (JSON → CSV/Excel column mapping): file path or inline JSON. Accepts a bare
+                              spec ({"columns":[...]} or {"sheets":[...]}) or a full "types export" payload.
   --description=<value>       New description
   --[no-]draft                Set draft status
   --identify-hints=<value>    Hints for automatic document identification
   --json                      Output as JSON (default when piped)
   --[no-]keep-ordering        Preserve property ordering in extraction output
   --name=<value>              New name
+  --no-conversion-spec        Remove the export spec from the document type
   --prompt-hints=<value>      General extraction prompt hints
   --publish                   Publish immediately (sets draft to false)
-  --schema=<value>            New JSON schema: file path or inline JSON string
+  --schema=<value>            New JSON schema: file path or inline JSON string. Unlike "types create", a conversionSpec
+                              embedded in a "types export" payload is ignored — use --conversion-spec to change it.
 
 DESCRIPTION
   Update an existing document type. Allows modifying name, description, schema, prompt hints, and other settings. At
@@ -237,8 +256,16 @@ EXAMPLES
 
     $ docutray types update invoice --publish
 
+  Replace the export spec (JSON → CSV/Excel column mapping)
+
+    $ docutray types update invoice --conversion-spec spec.json
+
+  Remove the export spec from the type
+
+    $ docutray types update invoice --no-conversion-spec
+
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/types/update
 ```
 
-_See code: [src/commands/types/update.ts](https://github.com/docutray/docutray-cli/blob/v0.2.1/src/commands/types/update.ts)_
+_See code: [src/commands/types/update.ts](https://github.com/docutray/docutray-cli/blob/v0.3.2/src/commands/types/update.ts)_

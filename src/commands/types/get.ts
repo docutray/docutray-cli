@@ -1,4 +1,5 @@
 import {Args, Flags} from '@oclif/core'
+import {type ConversionSpec, isMultiSheetConversionSpec} from 'docutray'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
@@ -38,12 +39,26 @@ export default class TypesGet extends BaseCommand {
         {key: 'Public', value: result.isPublic ? 'yes' : 'no'},
         {key: 'Draft', value: result.isDraft ? 'yes' : 'no'},
         {key: 'Schema', value: describeSchema(result.jsonSchema)},
+        {key: 'Export spec', value: describeConversionSpec(result.conversionSpec)},
       ])
     } catch (error) {
       outputError(error)
       this.exit(1)
     }
   }
+}
+
+function describeConversionSpec(spec: ConversionSpec | null | undefined): string {
+  if (!spec) return '(none)'
+
+  if (isMultiSheetConversionSpec(spec)) {
+    const sheets = spec.sheets?.length ?? 0
+    const columns = (spec.sheets ?? []).reduce((total, sheet) => total + (sheet.columns?.length ?? 0), 0)
+    return `${sheets} sheet${sheets === 1 ? '' : 's'}, ${columns} column${columns === 1 ? '' : 's'}`
+  }
+
+  const columns = spec.columns?.length ?? 0
+  return `${columns} column${columns === 1 ? '' : 's'}`
 }
 
 function describeSchema(jsonSchema: Record<string, unknown> | null | undefined): string {

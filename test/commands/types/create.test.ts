@@ -146,6 +146,119 @@ describe('types create', () => {
     exitSpy.mockRestore()
   })
 
+  describe('conversion spec', () => {
+    const LEGACY_SPEC = {columns: [{header: 'Total', jsonPath: '$.total'}]}
+    const BASE_ARGS = ['--name', 'Invoice', '--code', 'invoice', '--description', 'test']
+
+    it('sends an inline spec from --conversion-spec', async () => {
+      const client = mockClient()
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', '{"type":"object"}', '--conversion-spec', JSON.stringify(LEGACY_SPEC)])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(
+        expect.objectContaining({conversionSpec: LEGACY_SPEC}),
+      )
+    })
+
+    it('sends a spec read from a file', async () => {
+      const client = mockClient()
+      const spec = {sheets: [{columns: [{header: 'Total', jsonPath: '$.total'}], name: 'Header'}]}
+      mockExistsSync.mockImplementation((path) => path === 'spec.json')
+      mockReadFileSync.mockReturnValue(JSON.stringify(spec))
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', '{"type":"object"}', '--conversion-spec', 'spec.json'])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(expect.objectContaining({conversionSpec: spec}))
+    })
+
+    it('carries the spec embedded in an exported --schema payload', async () => {
+      const client = mockClient()
+      const exported = {
+        codeType: 'factura',
+        conversionSpec: LEGACY_SPEC,
+        id: 'dt_999',
+        jsonSchema: {properties: {total: {type: 'number'}}, type: 'object'},
+      }
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(JSON.stringify(exported))
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json'])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(
+        expect.objectContaining({conversionSpec: LEGACY_SPEC, jsonSchema: exported.jsonSchema}),
+      )
+    })
+
+    it('lets an explicit --conversion-spec win over the embedded one', async () => {
+      const client = mockClient()
+      const override = {columns: [{header: 'Issuer', jsonPath: '$.issuer'}]}
+      mockExistsSync.mockImplementation((path) => path === 'factura.json')
+      mockReadFileSync.mockReturnValue(
+        JSON.stringify({conversionSpec: LEGACY_SPEC, jsonSchema: {type: 'object'}}),
+      )
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json', '--conversion-spec', JSON.stringify(override)])
+
+      expect(client.documentTypes.create).toHaveBeenCalledWith(
+        expect.objectContaining({conversionSpec: override}),
+      )
+    })
+
+    it('omits the key when the export payload has no spec', async () => {
+      const client = mockClient()
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(JSON.stringify({codeType: 'factura', jsonSchema: {type: 'object'}}))
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json'])
+
+      expect(client.documentTypes.create.mock.calls[0][0]).not.toHaveProperty('conversionSpec')
+    })
+
+    it('omits the key when the export payload has a null spec', async () => {
+      const client = mockClient()
+      mockExistsSync.mockReturnValue(true)
+      mockReadFileSync.mockReturnValue(
+        JSON.stringify({conversionSpec: null, jsonSchema: {type: 'object'}}),
+      )
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', 'factura.json'])
+
+      expect(client.documentTypes.create.mock.calls[0][0]).not.toHaveProperty('conversionSpec')
+    })
+
+    it('omits the key when no spec is provided at all', async () => {
+      const client = mockClient()
+
+      await TypesCreate.run([...BASE_ARGS, '--schema', '{"type":"object"}'])
+
+      expect(client.documentTypes.create.mock.calls[0][0]).not.toHaveProperty('conversionSpec')
+    })
+
+    it('fails without calling the API when the spec has no columns or sheets', async () => {
+      const client = mockClient()
+
+      await expect(
+        TypesCreate.run([...BASE_ARGS, '--schema', '{"type":"object"}', '--conversion-spec', '{"foo":1}']),
+      ).rejects.toThrow('EXIT')
+
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('expected an object with'))
+      expect(client.documentTypes.create).not.toHaveBeenCalled()
+      exitSpy.mockRestore()
+    })
+
+    it('fails without calling the API when the spec is not valid JSON', async () => {
+      const client = mockClient()
+
+      await expect(
+        TypesCreate.run([...BASE_ARGS, '--schema', '{"type":"object"}', '--conversion-spec', 'not-json']),
+      ).rejects.toThrow('EXIT')
+
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid conversion spec'))
+      expect(client.documentTypes.create).not.toHaveBeenCalled()
+      exitSpy.mockRestore()
+    })
+  })
+
   it('handles API errors', async () => {
     const client = mockClient()
     client.documentTypes.create.mockRejectedValue(new Error('codeType ya está en uso'))
