@@ -1,24 +1,23 @@
 import {existsSync, statSync} from 'node:fs'
 
 /**
- * Format DocuTray API keys are expected to follow.
+ * Basic format check for DocuTray API keys, not server-side authentication.
  *
- * Real keys are emitted by the dashboard as `dt` followed by a long URL-safe
- * base64 payload (currently 64 chars after the prefix, total length 66). The
- * pattern is intentionally permissive on length (≥20 chars after `dt`) so
- * minor changes in the dashboard's key generator don't reject legitimate keys.
+ * OAuth adds a `dt` prefix; dashboard keys can be unprefixed. Both use long
+ * URL-safe payloads (currently 64 chars). Keep accepting older `dt` keys with
+ * at least 20 payload chars, and allow opaque keys of at least 32 chars so
+ * minor generator changes don't reject legitimate keys.
  *
- * Tight enough to reject the v0.2.1 garbage cases (`"2"`, empty string,
- * arbitrary text without the `dt` prefix) and silently-paste mistakes.
+ * Rejects short accidental inputs and invalid characters. The API determines
+ * whether a key is valid and which organization it belongs to.
  */
-export const DOCUTRAY_API_KEY_PATTERN = /^dt[A-Za-z0-9_-]{20,}$/
+export const DOCUTRAY_API_KEY_PATTERN = /^(?:dt[A-Za-z0-9_-]{20,}|[A-Za-z0-9_-]{32,})$/
 
 export function validateApiKey(value: string): string {
   const trimmed = (value ?? '').trim()
   if (!DOCUTRAY_API_KEY_PATTERN.test(trimmed)) {
-    const preview = trimmed.length > 0 ? trimmed.slice(0, 12) : '(empty)'
     throw new Error(
-      `Invalid API key format. Expected a DocuTray API key starting with "dt" (got: ${preview}…)`,
+      'Invalid API key format. Expected a URL-safe DocuTray API key: at least 32 characters, or "dt" followed by at least 20 characters.',
     )
   }
 

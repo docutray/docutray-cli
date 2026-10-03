@@ -84,6 +84,15 @@ describe('login with --api-key flag', () => {
     )
   })
 
+  it.each(['flag', 'argument'])('saves an unprefixed dashboard key via %s and masks output', async (input) => {
+    const key = 'aB3_-'.repeat(12) + 'cD4e'
+    await Login.run(input === 'flag' ? ['--api-key', key, '--json'] : [key, '--json'])
+    expect(mockWriteConfig).toHaveBeenCalledWith(expect.objectContaining({apiKey: key}))
+    const output = stdoutSpy.mock.calls.map(c => c[0] as string).join('')
+    expect(JSON.parse(output).apiKey).toBe(key.slice(0, 4) + '****' + key.slice(-4))
+    expect(output).not.toContain(key)
+  })
+
   it('outputs success with masked key', async () => {
     await Login.run(['dt_live_abc1234567890ABCDEF', '--json'])
     const output = stdoutSpy.mock.calls.map(c => c[0] as string).join('')
@@ -403,9 +412,22 @@ describe('login API key validation', () => {
     expect(stderrOutput).toContain('Invalid API key format')
   })
 
-  it('rejects wrong-prefix --api-key value without writing config', async () => {
+  it('rejects a short unprefixed --api-key value without writing config', async () => {
     await expect(Login.run(['--api-key', 'sk_live_abcDEF0123456789abc'])).rejects.toThrow('EXIT')
     expect(mockWriteConfig).not.toHaveBeenCalled()
+  })
+
+  it.each(['flag', 'argument'])('rejects a malformed unprefixed key via %s without saving or exposing it', async (input) => {
+    const key = 'aB3_-'.repeat(12) + '!'
+    const args = input === 'flag' ? ['--api-key', key, '--json'] : [key, '--json']
+    await expect(Login.run(args)).rejects.toThrow('EXIT')
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const stderrChunks = stderrSpy.mock.calls.map(c => c[0] as string)
+    const errorJson = stderrChunks.find(chunk => chunk.trimStart().startsWith('{'))
+    expect(errorJson).toBeDefined()
+    expect(JSON.parse(errorJson!).error).toMatch(/^Invalid API key format/)
+    const stderrOutput = stderrChunks.join('')
+    expect(stderrOutput).not.toContain(key.slice(0, 12))
   })
 
   it('rejects empty --api-key value without writing config', async () => {

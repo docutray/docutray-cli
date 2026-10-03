@@ -90,10 +90,23 @@ describe('validateSource', () => {
 })
 
 describe('validateApiKey', () => {
-  it('accepts a real-format key (dt + 64 base64url chars)', () => {
-    // Same shape the dashboard emits: `dt` + 64 URL-safe base64 chars.
+  it('accepts an OAuth-format key (dt + 64 base64url chars)', () => {
     const key = 'dtUXtMlrFQTPaBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789AbCdEfGhIjKlMnOpQrSt'
     expect(validateApiKey(key)).toBe(key)
+  })
+
+  it('accepts an unprefixed dashboard key', () => {
+    const key = 'aB3_-'.repeat(12) + 'cD4e'
+    expect(validateApiKey(key)).toBe(key)
+    expect(validateApiKey(`  ${key}\n`)).toBe(key)
+  })
+
+  it('accepts opaque keys at the minimum length', () => {
+    expect(validateApiKey('a'.repeat(32))).toBe('a'.repeat(32))
+  })
+
+  it('rejects unprefixed keys below the minimum length', () => {
+    expect(() => validateApiKey('a'.repeat(31))).toThrow(/^Invalid API key format/)
   })
 
   it('accepts a legacy dt_live_… style key', () => {
@@ -129,7 +142,7 @@ describe('validateApiKey', () => {
     expect(() => validateApiKey('2')).toThrow(/^Invalid API key format/)
   })
 
-  it('rejects wrong prefix', () => {
+  it('rejects short unprefixed tokens', () => {
     expect(() => validateApiKey('sk_live_abcDEF0123456789abc')).toThrow(/^Invalid API key format/)
   })
 
@@ -146,11 +159,19 @@ describe('validateApiKey', () => {
     expect(() => validateApiKey('dt!!!@@@###$$$%%%^^^&&&***')).toThrow(/^Invalid API key format/)
   })
 
-  it('error message includes a preview of the offending input', () => {
-    expect(() => validateApiKey('garbage-input-12345')).toThrow(/got: garbage-inpu…/)
+  it('rejects invalid characters and whitespace inside unprefixed keys', () => {
+    for (const invalid of ['a'.repeat(32) + '!', 'a'.repeat(32) + ' b', 'a'.repeat(32) + '\nb']) {
+      expect(() => validateApiKey(invalid)).toThrow(/^Invalid API key format/)
+    }
   })
 
-  it('error message handles empty input gracefully', () => {
-    expect(() => validateApiKey('')).toThrow(/got: \(empty\)…/)
+  it('does not expose the rejected input in the error message', () => {
+    const key = 'SENSITIVE_TOKEN_123456789012345678!'
+    expect(() => validateApiKey(key)).toThrow(/^Invalid API key format/)
+    try {
+      validateApiKey(key)
+    } catch (error) {
+      expect((error as Error).message).not.toContain(key.slice(0, 12))
+    }
   })
 })
