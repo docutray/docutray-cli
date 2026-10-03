@@ -1,6 +1,6 @@
 {
   "name": "@docutray/cli",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Official DocuTray CLI — AI-powered document processing from the command line",
   "author": "DocuTray",
   "license": "MIT",
