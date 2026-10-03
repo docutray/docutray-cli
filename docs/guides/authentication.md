@@ -6,7 +6,7 @@ This guide covers how to authenticate the DocuTray CLI, manage API keys, and con
 
 1. Sign in to the [DocuTray Dashboard](https://app.docutray.com)
 2. Navigate to **Settings > API Keys**
-3. Click **Create API Key** and copy the generated key (it starts with `dt_`)
+3. Click **Create API Key** and copy the generated key. Dashboard keys can be unprefixed; OAuth-created keys start with `dt`.
 
 ## Authentication methods
 
