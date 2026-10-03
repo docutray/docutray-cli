@@ -51,4 +51,4 @@ DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/identify
 ```
 
-_See code: [src/commands/identify.ts](https://github.com/docutray/docutray-cli/blob/v0.4.0/src/commands/identify.ts)_
+_See code: [src/commands/identify.ts](https://github.com/docutray/docutray-cli/blob/v0.4.1/src/commands/identify.ts)_
