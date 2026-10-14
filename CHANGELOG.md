@@ -5,11 +5,11 @@ All notable changes to `@docutray/cli` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-10-14
 
 ### Fixed
 
-- `login --oauth` (and the OAuth option of the interactive `login`) lets you choose the organization in the browser. Before, a user with several organizations was logged into an arbitrary one. The authorize request now asks for `scope=openid docutray:cli` and `prompt=consent`, so the DocuTray consent screen shows its organization selector on every login, with your active organization preselected. The server binds the token to the organization you choose, and the API key is created for it.
+- `login --oauth` (and the OAuth option of the interactive `login`) lets you choose the organization in the browser. Before, a user with several organizations was logged into an arbitrary one. The authorize request now asks for `scope=openid docutray:cli` and `prompt=consent`, so the DocuTray consent screen shows its organization selector on every login, with your active organization preselected. The server binds the token to the organization you choose, and the API key is created for it ([#42]).
 - Errors redirected by the browser step keep the OAuth error code next to the server's description (`OAuth error (access_denied): …`), so agents can match on it. Control, bidi and zero-width characters in those messages are stripped.
 - When the token, organizations or API key calls fail, `login` names the step and shows the server's message (`Failed to fetch organizations: <message>`, for example when you are no longer a member of the organization you chose) instead of the raw JSON body. The HTTP status stays in the output: `(401)` on a terminal, `"status": 401` in piped JSON.
 - The OAuth callback ignores error redirects that don't carry this login's `state`, so another local process or web page can't abort the login or choose the message shown. An error redirect that arrives while the browser is still opening no longer crashes the CLI with a stack trace.
@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Requires a DocuTray deployment that supports the `docutray:cli` scope. Against an older deployment, OAuth login fails with `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` and a hint to use `login --api-key` (with `--base-url` when you logged in against a custom URL), which keeps working.
+- Requires a DocuTray deployment that supports the `docutray:cli` scope (app.docutray.com does). Against an older deployment, OAuth login fails with `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` and a hint to use `login --api-key` (with `--base-url` when you logged in against a custom URL), which keeps working.
 
 ## [0.4.1] - 2026-10-03
 
@@ -112,6 +112,7 @@ Refinements to the OAuth2 login flow introduced in 0.2.0 ([#27]):
 
 - README heading hierarchy and an outdated `--table` flag reference.
 
+[0.5.0]: https://github.com/docutray/docutray-cli/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/docutray/docutray-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/docutray/docutray-cli/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/docutray/docutray-cli/compare/v0.3.1...v0.3.2
@@ -132,3 +133,4 @@ Refinements to the OAuth2 login flow introduced in 0.2.0 ([#27]):
 [#36]: https://github.com/docutray/docutray-cli/pull/36
 [#38]: https://github.com/docutray/docutray-cli/issues/38
 [#39]: https://github.com/docutray/docutray-cli/pull/39
+[#42]: https://github.com/docutray/docutray-cli/pull/42
