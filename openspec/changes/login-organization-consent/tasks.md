@@ -14,6 +14,13 @@
 - [x] 3.1 Agregar la entrada `Unreleased` en `CHANGELOG.md` (Fixed + nota de compatibilidad con el servidor) y verificar que `npm run docs:generate` no produce diff en `docs/commands/` (la ayuda no cambia)
 - [x] 3.2 Correr `npm run build` y `npm run test`; verificar que toda la suite pasa, incluido `test/help.test.ts`
 
+## 4. Ajustes de revisión
+
+- [x] 4.1 Mostrar `OAuth error (<code>): <description>` en el callback y, para `invalid_scope`, sugerir `docutray login --api-key`; verificar con `test/oauth.test.ts` contra el servidor de callback real
+- [x] 4.2 Mostrar tal cual el campo `error` del body cuando fallan `organizations` o `create-api-key` (p. ej. el 401 de membresía perdida); verificar con `test/oauth.test.ts`
+- [x] 4.3 Igualar el timeout del login interactivo a 180s (`--oauth`); verificar en `test/commands/login.test.ts`
+- [x] 4.4 Integrar los tests duplicados en los existentes y corregir el CHANGELOG; verificar con `npm run test`
+
 ## Workflow follow-up
 
 - Abrir PR a `main`. No mergear ni publicar release sin el OK del usuario y sin la web en producción.

@@ -21,7 +21,6 @@ interface OAuthLoginOptions {
 }
 
 const DEFAULT_OAUTH_TIMEOUT_SECONDS = 180
-const TTY_MENU_OAUTH_TIMEOUT_MS = 120_000
 
 export default class Login extends BaseCommand {
   static args = {
@@ -104,7 +103,7 @@ export default class Login extends BaseCommand {
         const apiKey = validateApiKey(rawKey)
         await this.loginWithApiKey(apiKey, config)
       } else {
-        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: TTY_MENU_OAUTH_TIMEOUT_MS})
+        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: DEFAULT_OAUTH_TIMEOUT_SECONDS * 1000})
       }
     } catch (error) {
       outputError(error)

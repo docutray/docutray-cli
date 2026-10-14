@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `login --oauth` (and the OAuth option of the interactive `login`) lets you choose the organization in the browser. Before, a user with several organizations was logged into an arbitrary one. The authorize request now asks for `scope=openid docutray:cli` and `prompt=consent`, so the DocuTray consent screen shows its organization selector on every login, with your active organization preselected. The server binds the token to the organization you choose, and the API key is created for it.
 
+- OAuth errors keep the OAuth error code next to the server's description (`OAuth error (access_denied): …`), so agents can match on it.
+- When the organizations or API key endpoints fail with a message (for example, you are no longer a member of the organization you chose), `login` shows that message as-is, not the raw status and JSON body.
+- The interactive `login` menu waits 180 seconds for the browser, the same as `login --oauth` (it was 120).
+
 ### Notes
 
-- Requires a DocuTray deployment that supports the `docutray:cli` scope. Against an older deployment, OAuth login fails with `OAuth error: invalid_scope`; `login --api-key` keeps working.
+- Requires a DocuTray deployment that supports the `docutray:cli` scope. Against an older deployment, OAuth login fails with `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` and a hint to use `login --api-key`, which keeps working.
 
 ## [0.4.1] - 2026-10-03
 

@@ -126,10 +126,9 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     const error = url.searchParams.get('error')
 
     if (error) {
-      const description = url.searchParams.get('error_description') || error
       res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
       res.end('<html><body><h1>Authentication failed</h1><p>You can close this window.</p></body></html>')
-      rejectCallback(new Error(`OAuth error: ${description}`))
+      rejectCallback(new Error(formatOAuthError(error, url.searchParams.get('error_description'))))
       return
     }
 
@@ -166,6 +165,33 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
       })
     },
   }
+}
+
+// Keep the OAuth error code in the message (agents match on it) alongside the
+// server's human description. `invalid_scope` means the server predates the
+// `docutray:cli` scope, so point at the login path that still works.
+function formatOAuthError(error: string, description: null | string): string {
+  const message = description ? `OAuth error (${error}): ${description}` : `OAuth error: ${error}`
+  if (error === 'invalid_scope') {
+    return `${message}. This DocuTray server does not support choosing the organization at login yet; ` +
+      'use `docutray login --api-key <key>` with a key created in the dashboard.'
+  }
+
+  return message
+}
+
+// DocuTray's own OAuth endpoints answer errors as `{"error": "<message>"}`;
+// show that message as-is. Anything else keeps the status and raw body.
+async function readErrorMessage(response: Response, prefix: string): Promise<string> {
+  const text = await response.text()
+  try {
+    const body = JSON.parse(text) as {error?: unknown}
+    if (typeof body?.error === 'string' && body.error) return body.error
+  } catch {
+    // Not JSON; fall through to the raw body.
+  }
+
+  return `${prefix} (${response.status}): ${text}`
 }
 
 function listenWithRetry(
@@ -259,8 +285,7 @@ export async function fetchOrganizations(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Failed to fetch organizations (${response.status}): ${text}`)
+    throw new Error(await readErrorMessage(response, 'Failed to fetch organizations'))
   }
 
   const data = await response.json() as {organizations: OAuthOrganization[]}
@@ -283,8 +308,7 @@ export async function createApiKeyFromToken(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`API key creation failed (${response.status}): ${text}`)
+    throw new Error(await readErrorMessage(response, 'API key creation failed'))
   }
 
   return response.json() as Promise<ApiKeyResponse>

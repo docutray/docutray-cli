@@ -18,8 +18,9 @@ The OAuth authorization URL built by `docutray login` SHALL request the scopes `
 - **THEN** the printed authorization URL contains `prompt=consent`
 
 #### Scenario: Server without the CLI scope
-- **WHEN** the authorization server rejects the request and redirects to the callback with `error=invalid_scope`
-- **THEN** stderr shows an OAuth error that includes the server's error description
+- **WHEN** the authorization server rejects the request and redirects to the callback with `error=invalid_scope` and an `error_description`
+- **THEN** stderr shows an OAuth error that contains both `invalid_scope` and the server's error description
+- **AND** the error tells the user to log in with `docutray login --api-key`
 - **AND** the process exits with non-zero code
 - **AND** `~/.config/docutray/config.json` is not modified
 
@@ -37,6 +38,12 @@ After exchanging the authorization code, the CLI SHALL create the API key for th
 - **WHEN** the organizations endpoint returns more than one organization
 - **THEN** the CLI creates the API key for the first one without prompting
 - **AND** stderr contains a warning naming the organization used
+
+#### Scenario: User is no longer a member of the bound organization
+- **WHEN** the organizations endpoint fails with a JSON body `{"error": "<message>"}`
+- **THEN** stderr shows `<message>` as-is
+- **AND** the process exits with non-zero code
+- **AND** `~/.config/docutray/config.json` is not modified
 
 #### Scenario: No organizations returned
 - **WHEN** the organizations endpoint returns an empty list

@@ -179,11 +179,12 @@ describe('login with OAuth2 flow', () => {
 
   it('executes full OAuth flow and saves org info to config', async () => {
     const {closeFn} = setupOAuthMocks()
+    const waitForCallback = vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'})
 
     mockStartCallbackServer.mockResolvedValue({
       port: 9876,
       close: closeFn,
-      waitForCallback: vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'}),
+      waitForCallback,
     })
 
     const originalIsTTY = process.stderr.isTTY
@@ -212,6 +213,8 @@ describe('login with OAuth2 flow', () => {
         }),
       )
       expect(closeFn).toHaveBeenCalled()
+      // Same budget as --oauth: every login now goes through the consent screen.
+      expect(waitForCallback).toHaveBeenCalledWith(180_000)
     } finally {
       process.stderr.isTTY = originalIsTTY
     }
@@ -290,6 +293,8 @@ describe('login --oauth (non-interactive OAuth)', () => {
 
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('Open this URL to authorize:')
+    // A single (consent-bound) organization needs no fallback warning.
+    expect(stderrOutput).not.toContain('not chosen in the browser')
   })
 
   it('--oauth uses localhost for the redirect_uri sent to token exchange', async () => {
@@ -357,15 +362,6 @@ describe('login --oauth (non-interactive OAuth)', () => {
     expect(stderrOutput).toContain('User denied access')
   })
 
-  it('--oauth with a single (consent-bound) organization prints no fallback warning', async () => {
-    happyPathOAuthMocks()
-    await Login.run(['--oauth', '--json'])
-
-    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
-    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
-    expect(stderrOutput).not.toContain('not chosen in the browser')
-  })
-
   it('--oauth warns and uses the first org when the server returns several', async () => {
     happyPathOAuthMocks()
     mockFetchOrganizations.mockResolvedValue([
@@ -390,23 +386,6 @@ describe('login --oauth (non-interactive OAuth)', () => {
     expect(mockWriteConfig).not.toHaveBeenCalled()
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('No organizations found')
-  })
-
-  it('--oauth surfaces invalid_scope from a server without docutray:cli and does not write config', async () => {
-    const closeFn = vi.fn()
-    mockStartCallbackServer.mockResolvedValue({
-      port: 54321,
-      close: closeFn,
-      waitForCallback: vi.fn().mockRejectedValue(new Error('OAuth error: invalid_scope')),
-    })
-
-    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
-
-    expect(mockExchangeCodeForToken).not.toHaveBeenCalled()
-    expect(mockWriteConfig).not.toHaveBeenCalled()
-    expect(closeFn).toHaveBeenCalled()
-    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
-    expect(stderrOutput).toContain('invalid_scope')
   })
 
   it('--oauth combined with --api-key is rejected up front', async () => {

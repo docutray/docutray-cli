@@ -1,4 +1,4 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest'
+import {afterEach, describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../src/config.js', () => ({
   getBaseUrl: vi.fn(() => 'https://app.docutray.com'),
@@ -6,6 +6,8 @@ vi.mock('../src/config.js', () => ({
 
 import {
   buildAuthorizeUrl,
+  createApiKeyFromToken,
+  fetchOrganizations,
   generatePKCE,
   startCallbackServer,
 } from '../src/oauth.js'
@@ -96,7 +98,33 @@ describe('startCallbackServer', () => {
     // Start the fetch but don't await it yet - let the server process the request
     const fetchPromise = fetch(`http://127.0.0.1:${port}/callback?error=access_denied&error_description=User+denied`)
 
-    await expect(promise).rejects.toThrow('OAuth error: User denied')
+    await expect(promise).rejects.toThrow('OAuth error (access_denied): User denied')
+    await fetchPromise
+    close()
+  })
+
+  it('keeps the error code when the callback has no description', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer()
+    const promise = waitForCallback()
+    const fetchPromise = fetch(`http://127.0.0.1:${port}/callback?error=access_denied`)
+
+    await expect(promise).rejects.toThrow(/^OAuth error: access_denied$/)
+    await fetchPromise
+    close()
+  })
+
+  it('names invalid_scope and points to --api-key when the server lacks docutray:cli', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer()
+    const promise = waitForCallback()
+    // Shape of Better Auth's authorize redirect for an unknown scope.
+    const fetchPromise = fetch(
+      `http://127.0.0.1:${port}/callback?error=invalid_scope` +
+      `&error_description=The+following+scopes+are+invalid%3A+docutray%3Acli&state=s`,
+    )
+
+    const error = await promise.catch((e: Error) => e)
+    expect(error.message).toContain('OAuth error (invalid_scope): The following scopes are invalid: docutray:cli')
+    expect(error.message).toContain('docutray login --api-key')
     await fetchPromise
     close()
   })
@@ -119,5 +147,42 @@ describe('startCallbackServer', () => {
     } finally {
       blocker.close()
     }
+  })
+})
+
+describe('DocuTray OAuth endpoint errors', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn<typeof globalThis, 'fetch'>>
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch')
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+  })
+
+  it('fetchOrganizations shows the server error message as-is', async () => {
+    fetchSpy.mockResolvedValue(new Response(
+      JSON.stringify({error: 'Ya no eres miembro de la organización autorizada. Vuelve a iniciar sesión.'}),
+      {status: 401},
+    ))
+
+    await expect(fetchOrganizations('token')).rejects.toThrow(
+      /^Ya no eres miembro de la organización autorizada\. Vuelve a iniciar sesión\.$/,
+    )
+  })
+
+  it('fetchOrganizations keeps status and body when the response is not a JSON error', async () => {
+    fetchSpy.mockResolvedValue(new Response('<html>Bad Gateway</html>', {status: 502}))
+
+    await expect(fetchOrganizations('token')).rejects.toThrow(
+      'Failed to fetch organizations (502): <html>Bad Gateway</html>',
+    )
+  })
+
+  it('createApiKeyFromToken shows the server error message as-is', async () => {
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({error: 'Forbidden organization'}), {status: 403}))
+
+    await expect(createApiKeyFromToken('token', 'org_other')).rejects.toThrow(/^Forbidden organization$/)
   })
 })
