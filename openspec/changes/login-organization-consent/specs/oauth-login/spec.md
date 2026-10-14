@@ -24,6 +24,11 @@ The OAuth authorization URL built by `docutray login` SHALL request the scopes `
 - **AND** the process exits with non-zero code
 - **AND** `~/.config/docutray/config.json` is not modified
 
+#### Scenario: Forged error callback is ignored
+- **WHEN** a request reaches the local callback with an `error` parameter and a `state` that does not match the login's state, or no `state`
+- **THEN** the CLI answers it with an error page and keeps waiting for the real callback
+- **AND** the login is not aborted by that request
+
 ### Requirement: API key is created for the organization bound by the server
 After exchanging the authorization code, the CLI SHALL create the API key for the first organization returned by the organizations endpoint, which for a token bound in the consent screen is the only organization returned. The CLI SHALL NOT prompt for an organization in the terminal.
 

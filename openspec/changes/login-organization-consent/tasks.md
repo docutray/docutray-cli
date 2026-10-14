@@ -29,6 +29,13 @@
 - [x] 5.4 Un solo timeout por defecto (`DEFAULT_OAUTH_TIMEOUT_MS`, 180s) compartido por `oauth.ts` y `login.ts`; verificar con `npm run test`
 - [x] 5.5 Actualizar design.md (sección de errores) y la spec; verificar con `openspec validate --strict`
 
+## 6. Tercera revisión
+
+- [x] 6.1 Ignorar errores del callback cuyo `state` no coincide con el del login; verificar en `test/oauth.test.ts` (400 para `state` ajeno o ausente, el real rechaza) y que `login` pasa su `state`
+- [x] 6.2 Marcar como manejada la rejection del callback al crearla; verificar en `test/oauth.test.ts` con un error que llega antes de `waitForCallback()`
+- [x] 6.3 Quitar también caracteres bidi y de ancho cero; verificar en `test/oauth.test.ts`
+- [x] 6.4 Citar la base URL en el hint cuando no es segura y devolver un error nuevo con `cause`; verificar con el caso parametrizado de `test/commands/login.test.ts`
+
 ## Workflow follow-up
 
 - Abrir PR a `main`. No mergear ni publicar release sin el OK del usuario y sin la web en producción.

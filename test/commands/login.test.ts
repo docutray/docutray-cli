@@ -276,7 +276,8 @@ describe('login --oauth (non-interactive OAuth)', () => {
 
     await Login.run(['--oauth', '--json'])
 
-    expect(mockStartCallbackServer).toHaveBeenCalled()
+    // The callback server only accepts error redirects carrying this login's state.
+    expect(mockStartCallbackServer).toHaveBeenCalledWith({state: 'fixed-state-123'})
     expect(mockWriteConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: 'dt_live_newkey123',
@@ -366,6 +367,7 @@ describe('login --oauth (non-interactive OAuth)', () => {
   it.each([
     {args: [], baseUrlFlag: ''},
     {args: ['--base-url', 'https://staging.docutray.com'], baseUrlFlag: ' --base-url https://staging.docutray.com'},
+    {args: ['--base-url', "https://x.example/a b'c"], baseUrlFlag: String.raw` --base-url 'https://x.example/a b'\''c'`},
   ])('--oauth on a server without docutray:cli fails with an --api-key hint$baseUrlFlag', async ({args, baseUrlFlag}) => {
     const closeFn = vi.fn()
     mockStartCallbackServer.mockResolvedValue({

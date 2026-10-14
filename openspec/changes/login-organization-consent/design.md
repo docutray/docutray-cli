@@ -42,13 +42,14 @@ Contra un servidor viejo el authorize ya falla con `invalid_scope`, así que la 
 
 La salida de éxito no cambia. Los errores sí, porque `invalid_scope` pasa a ser un error esperable (servidor viejo o staging sin el scope):
 
-- **Callback:** `OAuthCallbackError` arma `OAuth error (<code>): <description>` y expone el código en `oauthError`. Quita caracteres de control de la query, porque cualquier proceso local puede llamar al callback.
-- **Hint de `invalid_scope`:** lo agrega `login.ts`, no `oauth.ts`, porque necesita la base URL: un `login` sin `--base-url` la vuelve a producción, así que el hint incluye `--base-url <url>` cuando el login usó una.
+- **Callback:** `OAuthCallbackError` arma `OAuth error (<code>): <description>` y expone el código en `oauthError`. Quita caracteres de control, bidi y de ancho cero de la query, porque cualquier proceso local puede llamar al callback.
+- **`state` en errores del callback:** con el hint, un error del callback se vuelve una instrucción para el usuario o el agente. El servidor de callback recibe el `state` del login e ignora (400) los errores con otro `state` o sin él; Better Auth repite `state` en sus redirects de error. La rejection se marca como manejada al crearla, porque un callback puede llegar antes de `waitForCallback()` (mientras se abre el navegador) y Node terminaría el proceso con un stack trace.
+- **Hint de `invalid_scope`:** lo agrega `login.ts`, no `oauth.ts`, porque necesita la base URL: un `login` sin `--base-url` la vuelve a producción, así que el hint incluye `--base-url <url>` (entre comillas si hace falta) cuando el login usó una. Devuelve un error nuevo con `cause` en lugar de modificar el original.
 - **Endpoints (`token`, `organizations`, `create-api-key`):** el error lleva `statusCode` y `body` para que `outputError` muestre el status (`(401)` en TTY, `status` en JSON piped). El mensaje nombra el paso y usa `error` (más `error_description`) del body JSON, o el body crudo si no es JSON. Así el 401 por membresía perdida en la organización atada se lee directo.
 
 *Alternativa descartada:* devolver solo el `error` del body. Pierde el paso y el status, que los agentes usan para decidir si reintentar.
 
-*Fuera de alcance:* el callback acepta errores sin validar `state` (comportamiento previo a este change). Va en un change aparte.
+*Fuera de alcance:* los callbacks de éxito con otro `state` siguen terminando el login con el error de CSRF que ya existía.
 
 ## Risks / Trade-offs
 

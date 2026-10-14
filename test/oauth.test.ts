@@ -140,6 +140,40 @@ describe('startCallbackServer', () => {
     close()
   })
 
+  it('strips bidi and zero-width characters from callback error params', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer()
+    const promise = waitForCallback()
+    const fetchPromise = fetch(`http://127.0.0.1:${port}/callback?error=access_denied&error_description=a%E2%80%AEb%E2%80%8Bc%E2%81%A6d`)
+
+    await expect(promise).rejects.toThrow(/^OAuth error \(access_denied\): abcd$/)
+    await fetchPromise
+    close()
+  })
+
+  it('ignores error callbacks whose state does not match the expected one', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer({preferredPort: 0, state: 'expected'})
+    const promise = waitForCallback(2000)
+
+    const forged = await fetch(`http://127.0.0.1:${port}/callback?error=invalid_scope&error_description=forged&state=other`)
+    expect(forged.status).toBe(400)
+    const stateless = await fetch(`http://127.0.0.1:${port}/callback?error=invalid_scope&error_description=forged`)
+    expect(stateless.status).toBe(400)
+
+    const real = fetch(`http://127.0.0.1:${port}/callback?error=access_denied&error_description=User+denied&state=expected`)
+    await expect(promise).rejects.toThrow('OAuth error (access_denied): User denied')
+    await real
+    close()
+  })
+
+  it('keeps an error callback that arrives before waitForCallback without an unhandled rejection', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer({preferredPort: 0})
+    await fetch(`http://127.0.0.1:${port}/callback?error=access_denied`)
+    await new Promise((resolve) => setTimeout(resolve, 20))
+
+    await expect(waitForCallback(1000)).rejects.toThrow('OAuth error: access_denied')
+    close()
+  })
+
   it('rejects on timeout', async () => {
     const {close, waitForCallback} = await startCallbackServer()
     await expect(waitForCallback(100)).rejects.toThrow('Authentication timed out')

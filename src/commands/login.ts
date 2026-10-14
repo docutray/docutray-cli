@@ -132,7 +132,7 @@ export default class Login extends BaseCommand {
     const {codeChallenge, codeVerifier} = generatePKCE()
     const state = crypto.randomUUID()
 
-    const {close, port, waitForCallback} = await startCallbackServer()
+    const {close, port, waitForCallback} = await startCallbackServer({state})
 
     // Cleanup on signal so the bound socket doesn't linger and block subsequent logins.
     const onSignal = (signal: NodeJS.Signals) => {
@@ -274,11 +274,19 @@ export default class Login extends BaseCommand {
 
 // `invalid_scope` means the server predates the `docutray:cli` scope. Point at
 // the login that still works, keeping a custom base URL: a login without
-// --base-url resets it to production.
+// --base-url resets it to production. Matches on `oauthError` rather than
+// `instanceof OAuthCallbackError` so tests can mock the oauth module.
 function addInvalidScopeHint(error: unknown, baseUrl?: string): unknown {
   if (!(error instanceof Error) || (error as {oauthError?: string}).oauthError !== 'invalid_scope') return error
-  const baseUrlFlag = baseUrl ? ` --base-url ${baseUrl}` : ''
-  error.message = `${error.message.replace(/\.+$/, '')}. This DocuTray server does not support choosing ` +
-    `the organization at login yet; use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`
-  return error
+  const baseUrlFlag = baseUrl ? ` --base-url ${shellQuote(baseUrl)}` : ''
+  return new Error(
+    `${error.message.replace(/\.+$/, '')}. This DocuTray server does not support choosing the organization ` +
+    `at login yet; use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`,
+    {cause: error},
+  )
+}
+
+// Quote a value for the suggested shell command unless it is plainly safe.
+function shellQuote(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", String.raw`'\''`)}'`
 }

@@ -39,6 +39,13 @@ export interface CallbackServerOptions {
    * Ignored when preferredPort is 0 (ephemeral). Defaults to 3.
    */
   retries?: number
+  /**
+   * The `state` sent in the authorize URL. When set, error callbacks carrying
+   * another state are ignored (answered 400), so a local process or web page
+   * hitting the callback cannot abort the login or choose the error shown.
+   * The authorization server echoes `state` on its error redirects.
+   */
+  state?: string
 }
 
 export interface PKCEChallenge {
@@ -112,6 +119,10 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     resolveCallback = resolve
     rejectCallback = reject
   })
+  // A callback can arrive before waitForCallback() attaches its handlers (for
+  // example while the browser is being opened). Mark the rejection as handled
+  // so Node doesn't crash; waitForCallback() still receives it.
+  callbackPromise.catch(() => {})
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', `http://${host}`)
@@ -128,6 +139,12 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     const error = url.searchParams.get('error')
 
     if (error) {
+      if (options.state !== undefined && state !== options.state) {
+        res.writeHead(400, {'Connection': 'close', 'Content-Type': 'text/html'})
+        res.end('<html><body><h1>Invalid callback</h1><p>State mismatch.</p></body></html>')
+        return
+      }
+
       res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
       res.end('<html><body><h1>Authentication failed</h1><p>You can close this window.</p></body></html>')
       rejectCallback(new OAuthCallbackError(error, url.searchParams.get('error_description')))
@@ -187,7 +204,8 @@ export class OAuthCallbackError extends Error {
 }
 
 function stripControlChars(value: string): string {
-  return value.replaceAll(/[\u0000-\u001F\u007F-\u009F]/g, '')
+  // C0/C1 controls, plus zero-width and bidi format characters that can hide or reorder text.
+  return value.replaceAll(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
 }
 
 /**
@@ -195,6 +213,8 @@ function stripControlChars(value: string): string {
  * `statusCode` and `body` so `outputError` prints the status (`(401)` on a TTY,
  * `status` in piped JSON). The message names the failed step and uses the
  * server's `error` (plus `error_description`, if any) when the body is JSON.
+ * `body.error` repeats the message on purpose: `outputError` prints
+ * `body.error` over `message`, and the server's own body would drop the step.
  */
 async function endpointError(response: Response, step: string): Promise<Error> {
   const text = await response.text()
