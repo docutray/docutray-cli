@@ -20,7 +20,7 @@ The OAuth authorization URL built by `docutray login` SHALL request the scopes `
 #### Scenario: Server without the CLI scope
 - **WHEN** the authorization server rejects the request and redirects to the callback with `error=invalid_scope` and an `error_description`
 - **THEN** stderr shows an OAuth error that contains both `invalid_scope` and the server's error description
-- **AND** the error tells the user to log in with `docutray login --api-key`
+- **AND** the error tells the user to log in with `docutray login --api-key`, adding `--base-url <url>` when the login used a custom base URL
 - **AND** the process exits with non-zero code
 - **AND** `~/.config/docutray/config.json` is not modified
 
@@ -40,8 +40,9 @@ After exchanging the authorization code, the CLI SHALL create the API key for th
 - **AND** stderr contains a warning naming the organization used
 
 #### Scenario: User is no longer a member of the bound organization
-- **WHEN** the organizations endpoint fails with a JSON body `{"error": "<message>"}`
-- **THEN** stderr shows `<message>` as-is
+- **WHEN** the organizations endpoint fails with status 401 and a JSON body `{"error": "<message>"}`
+- **THEN** stderr shows an error that names the failed step and contains `<message>`
+- **AND** the HTTP status is reported (`status` field in piped JSON)
 - **AND** the process exits with non-zero code
 - **AND** `~/.config/docutray/config.json` is not modified
 

@@ -21,7 +21,9 @@ const DEFAULT_CALLBACK_PORT = 9876
 // fail fast with a message that names the conflicting port. Tests and
 // future-allowlist callers can opt into retry by passing a non-zero value.
 const DEFAULT_PORT_RETRIES = 0
-const OAUTH_TIMEOUT_MS = 120_000
+// Every login goes through the dashboard's consent screen (organization
+// selector), so leave room for sign-in plus that extra step.
+export const DEFAULT_OAUTH_TIMEOUT_MS = 180_000
 
 export interface CallbackServerOptions {
   /**
@@ -128,7 +130,7 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     if (error) {
       res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
       res.end('<html><body><h1>Authentication failed</h1><p>You can close this window.</p></body></html>')
-      rejectCallback(new Error(formatOAuthError(error, url.searchParams.get('error_description'))))
+      rejectCallback(new OAuthCallbackError(error, url.searchParams.get('error_description')))
       return
     }
 
@@ -155,7 +157,7 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
       server.close()
     },
     port,
-    waitForCallback: (timeout = OAUTH_TIMEOUT_MS) => {
+    waitForCallback: (timeout = DEFAULT_OAUTH_TIMEOUT_MS) => {
       const timer = setTimeout(() => {
         rejectCallback(new Error(`Authentication timed out after ${timeout / 1000}s. Please try again.`))
       }, timeout)
@@ -167,31 +169,49 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
   }
 }
 
-// Keep the OAuth error code in the message (agents match on it) alongside the
-// server's human description. `invalid_scope` means the server predates the
-// `docutray:cli` scope, so point at the login path that still works.
-function formatOAuthError(error: string, description: null | string): string {
-  const message = description ? `OAuth error (${error}): ${description}` : `OAuth error: ${error}`
-  if (error === 'invalid_scope') {
-    return `${message}. This DocuTray server does not support choosing the organization at login yet; ` +
-      'use `docutray login --api-key <key>` with a key created in the dashboard.'
-  }
+/**
+ * Error redirected to the callback by the authorization server. Keeps the
+ * OAuth error code (agents match on it) next to the server's description.
+ */
+export class OAuthCallbackError extends Error {
+  readonly oauthError: string
 
-  return message
+  constructor(error: string, description: null | string) {
+    // The callback is reachable by any local process, so never echo control
+    // characters (terminal escape sequences) from its query string.
+    const code = stripControlChars(error)
+    const detail = description ? stripControlChars(description) : ''
+    super(detail ? `OAuth error (${code}): ${detail}` : `OAuth error: ${code}`)
+    this.oauthError = code
+  }
 }
 
-// DocuTray's own OAuth endpoints answer errors as `{"error": "<message>"}`;
-// show that message as-is. Anything else keeps the status and raw body.
-async function readErrorMessage(response: Response, prefix: string): Promise<string> {
+function stripControlChars(value: string): string {
+  return value.replaceAll(/[\u0000-\u001F\u007F-\u009F]/g, '')
+}
+
+/**
+ * Builds the error for a failed call to a DocuTray OAuth endpoint. It carries
+ * `statusCode` and `body` so `outputError` prints the status (`(401)` on a TTY,
+ * `status` in piped JSON). The message names the failed step and uses the
+ * server's `error` (plus `error_description`, if any) when the body is JSON.
+ */
+async function endpointError(response: Response, step: string): Promise<Error> {
   const text = await response.text()
+  let detail = text
   try {
-    const body = JSON.parse(text) as {error?: unknown}
-    if (typeof body?.error === 'string' && body.error) return body.error
+    const body = JSON.parse(text) as {error?: unknown; error_description?: unknown}
+    if (typeof body?.error === 'string' && body.error) {
+      detail = typeof body.error_description === 'string' && body.error_description
+        ? `${body.error}: ${body.error_description}`
+        : body.error
+    }
   } catch {
-    // Not JSON; fall through to the raw body.
+    // Not JSON; keep the raw body.
   }
 
-  return `${prefix} (${response.status}): ${text}`
+  const message = `${step}: ${detail}`
+  return Object.assign(new Error(message), {body: {error: message}, statusCode: response.status})
 }
 
 function listenWithRetry(
@@ -258,8 +278,7 @@ export async function exchangeCodeForToken(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Token exchange failed (${response.status}): ${text}`)
+    throw await endpointError(response, 'Token exchange failed')
   }
 
   return response.json() as Promise<TokenResponse>
@@ -285,7 +304,7 @@ export async function fetchOrganizations(
   })
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to fetch organizations'))
+    throw await endpointError(response, 'Failed to fetch organizations')
   }
 
   const data = await response.json() as {organizations: OAuthOrganization[]}
@@ -308,7 +327,7 @@ export async function createApiKeyFromToken(
   })
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'API key creation failed'))
+    throw await endpointError(response, 'API key creation failed')
   }
 
   return response.json() as Promise<ApiKeyResponse>

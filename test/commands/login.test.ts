@@ -19,6 +19,7 @@ vi.mock('../../src/config.js', () => ({
 vi.mock('../../src/oauth.js', () => ({
   buildAuthorizeUrl: vi.fn(() => 'https://app.docutray.com/api/auth/oauth2/authorize?test=1'),
   createApiKeyFromToken: vi.fn(),
+  DEFAULT_OAUTH_TIMEOUT_MS: 180_000,
   exchangeCodeForToken: vi.fn(),
   fetchOrganizations: vi.fn(),
   generatePKCE: vi.fn(() => ({codeVerifier: 'test-verifier', codeChallenge: 'test-challenge'})),
@@ -360,6 +361,47 @@ describe('login --oauth (non-interactive OAuth)', () => {
     expect(closeFn).toHaveBeenCalled()
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('User denied access')
+  })
+
+  it.each([
+    {args: [], baseUrlFlag: ''},
+    {args: ['--base-url', 'https://staging.docutray.com'], baseUrlFlag: ' --base-url https://staging.docutray.com'},
+  ])('--oauth on a server without docutray:cli fails with an --api-key hint$baseUrlFlag', async ({args, baseUrlFlag}) => {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockRejectedValue(Object.assign(
+        new Error('OAuth error (invalid_scope): The following scopes are invalid: docutray:cli'),
+        {oauthError: 'invalid_scope'},
+      )),
+    })
+
+    await expect(Login.run(['--oauth', '--json', ...args])).rejects.toThrow('EXIT')
+
+    expect(mockExchangeCodeForToken).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    expect(closeFn).toHaveBeenCalled()
+    const errorWrite = stderrSpy.mock.calls.map((c) => c[0] as string).find((w) => w.startsWith('{'))
+    const parsed = JSON.parse(errorWrite!)
+    expect(parsed.error).toBe(
+      'OAuth error (invalid_scope): The following scopes are invalid: docutray:cli. ' +
+      'This DocuTray server does not support choosing the organization at login yet; ' +
+      `use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`,
+    )
+  })
+
+  it('--oauth reports the server message and status when the organizations call fails', async () => {
+    happyPathOAuthMocks()
+    const message = 'Failed to fetch organizations: Ya no eres miembro de la organización autorizada.'
+    mockFetchOrganizations.mockRejectedValue(Object.assign(new Error(message), {body: {error: message}, statusCode: 401}))
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const errorWrite = stderrSpy.mock.calls.map((c) => c[0] as string).find((w) => w.startsWith('{'))
+    const parsed = JSON.parse(errorWrite!)
+    expect(parsed).toEqual({error: message, status: 401})
   })
 
   it('--oauth warns and uses the first org when the server returns several', async () => {

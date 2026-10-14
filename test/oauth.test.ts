@@ -7,6 +7,7 @@ vi.mock('../src/config.js', () => ({
 import {
   buildAuthorizeUrl,
   createApiKeyFromToken,
+  exchangeCodeForToken,
   fetchOrganizations,
   generatePKCE,
   startCallbackServer,
@@ -113,7 +114,7 @@ describe('startCallbackServer', () => {
     close()
   })
 
-  it('names invalid_scope and points to --api-key when the server lacks docutray:cli', async () => {
+  it('exposes the OAuth error code for invalid_scope from a server without docutray:cli', async () => {
     const {port, close, waitForCallback} = await startCallbackServer()
     const promise = waitForCallback()
     // Shape of Better Auth's authorize redirect for an unknown scope.
@@ -122,9 +123,19 @@ describe('startCallbackServer', () => {
       `&error_description=The+following+scopes+are+invalid%3A+docutray%3Acli&state=s`,
     )
 
-    const error = await promise.catch((e: Error) => e)
-    expect(error.message).toContain('OAuth error (invalid_scope): The following scopes are invalid: docutray:cli')
-    expect(error.message).toContain('docutray login --api-key')
+    const error = await promise.catch((e: Error & {oauthError?: string}) => e)
+    expect(error.message).toBe('OAuth error (invalid_scope): The following scopes are invalid: docutray:cli')
+    expect(error.oauthError).toBe('invalid_scope')
+    await fetchPromise
+    close()
+  })
+
+  it('strips control characters (terminal escapes) from callback error params', async () => {
+    const {port, close, waitForCallback} = await startCallbackServer()
+    const promise = waitForCallback()
+    const fetchPromise = fetch(`http://127.0.0.1:${port}/callback?error=access_denied&error_description=%1B%5B31mred%1B%5B0m%0Aline`)
+
+    await expect(promise).rejects.toThrow(/^OAuth error \(access_denied\): \[31mred\[0mline$/)
     await fetchPromise
     close()
   })
@@ -161,28 +172,41 @@ describe('DocuTray OAuth endpoint errors', () => {
     fetchSpy.mockRestore()
   })
 
-  it('fetchOrganizations shows the server error message as-is', async () => {
-    fetchSpy.mockResolvedValue(new Response(
-      JSON.stringify({error: 'Ya no eres miembro de la organización autorizada. Vuelve a iniciar sesión.'}),
-      {status: 401},
-    ))
+  it('fetchOrganizations names the step, shows the server message and keeps the status', async () => {
+    const message = 'Ya no eres miembro de la organización autorizada. Vuelve a iniciar sesión.'
+    fetchSpy.mockResolvedValue(new Response(JSON.stringify({error: message}), {status: 401}))
 
-    await expect(fetchOrganizations('token')).rejects.toThrow(
-      /^Ya no eres miembro de la organización autorizada\. Vuelve a iniciar sesión\.$/,
-    )
+    const error = await fetchOrganizations('token').catch((e: Error & {body?: unknown; statusCode?: number}) => e)
+    expect(error.message).toBe(`Failed to fetch organizations: ${message}`)
+    expect(error.statusCode).toBe(401)
+    expect(error.body).toEqual({error: `Failed to fetch organizations: ${message}`})
   })
 
-  it('fetchOrganizations keeps status and body when the response is not a JSON error', async () => {
+  it('fetchOrganizations keeps the raw body when the response is not JSON', async () => {
     fetchSpy.mockResolvedValue(new Response('<html>Bad Gateway</html>', {status: 502}))
 
-    await expect(fetchOrganizations('token')).rejects.toThrow(
-      'Failed to fetch organizations (502): <html>Bad Gateway</html>',
-    )
+    const error = await fetchOrganizations('token').catch((e: Error & {statusCode?: number}) => e)
+    expect(error.message).toBe('Failed to fetch organizations: <html>Bad Gateway</html>')
+    expect(error.statusCode).toBe(502)
   })
 
-  it('createApiKeyFromToken shows the server error message as-is', async () => {
+  it('createApiKeyFromToken names the step and keeps the status', async () => {
     fetchSpy.mockResolvedValue(new Response(JSON.stringify({error: 'Forbidden organization'}), {status: 403}))
 
-    await expect(createApiKeyFromToken('token', 'org_other')).rejects.toThrow(/^Forbidden organization$/)
+    const error = await createApiKeyFromToken('token', 'org_other').catch((e: Error & {statusCode?: number}) => e)
+    expect(error.message).toBe('API key creation failed: Forbidden organization')
+    expect(error.statusCode).toBe(403)
+  })
+
+  it('exchangeCodeForToken includes the OAuth error code and description', async () => {
+    fetchSpy.mockResolvedValue(new Response(
+      JSON.stringify({error: 'invalid_grant', error_description: 'Authorization code expired'}),
+      {status: 400},
+    ))
+
+    const error = await exchangeCodeForToken('code', 'verifier', 'http://localhost:9876/callback')
+      .catch((e: Error & {statusCode?: number}) => e)
+    expect(error.message).toBe('Token exchange failed: invalid_grant: Authorization code expired')
+    expect(error.statusCode).toBe(400)
   })
 })

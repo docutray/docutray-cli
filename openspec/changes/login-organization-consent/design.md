@@ -38,9 +38,17 @@ Contra un servidor viejo el authorize ya falla con `invalid_scope`, así que la 
 
 *Alternativa descartada:* fallar si llegan varias organizaciones. Bloquearía el login por un problema del servidor que el usuario no puede resolver desde el CLI.
 
-### Salida
+### 4. Errores de OAuth con código, paso y status
 
-No cambia. `invalid_scope` llega como `error` en el callback y el código existente lo convierte en `OAuth error: <description>`: formato humano en stderr TTY, JSON en stderr piped.
+La salida de éxito no cambia. Los errores sí, porque `invalid_scope` pasa a ser un error esperable (servidor viejo o staging sin el scope):
+
+- **Callback:** `OAuthCallbackError` arma `OAuth error (<code>): <description>` y expone el código en `oauthError`. Quita caracteres de control de la query, porque cualquier proceso local puede llamar al callback.
+- **Hint de `invalid_scope`:** lo agrega `login.ts`, no `oauth.ts`, porque necesita la base URL: un `login` sin `--base-url` la vuelve a producción, así que el hint incluye `--base-url <url>` cuando el login usó una.
+- **Endpoints (`token`, `organizations`, `create-api-key`):** el error lleva `statusCode` y `body` para que `outputError` muestre el status (`(401)` en TTY, `status` en JSON piped). El mensaje nombra el paso y usa `error` (más `error_description`) del body JSON, o el body crudo si no es JSON. Así el 401 por membresía perdida en la organización atada se lee directo.
+
+*Alternativa descartada:* devolver solo el `error` del body. Pierde el paso y el status, que los agentes usan para decidir si reintentar.
+
+*Fuera de alcance:* el callback acepta errores sin validar `state` (comportamiento previo a este change). Va en un change aparte.
 
 ## Risks / Trade-offs
 

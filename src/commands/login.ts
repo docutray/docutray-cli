@@ -7,6 +7,7 @@ import {type Config, getConfigPath, maskApiKey, readConfig, writeConfig} from '.
 import {
   buildAuthorizeUrl,
   createApiKeyFromToken,
+  DEFAULT_OAUTH_TIMEOUT_MS,
   exchangeCodeForToken,
   fetchOrganizations,
   generatePKCE,
@@ -20,7 +21,7 @@ interface OAuthLoginOptions {
   timeoutMs: number
 }
 
-const DEFAULT_OAUTH_TIMEOUT_SECONDS = 180
+const DEFAULT_OAUTH_TIMEOUT_SECONDS = DEFAULT_OAUTH_TIMEOUT_MS / 1000
 
 export default class Login extends BaseCommand {
   static args = {
@@ -103,7 +104,7 @@ export default class Login extends BaseCommand {
         const apiKey = validateApiKey(rawKey)
         await this.loginWithApiKey(apiKey, config)
       } else {
-        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: DEFAULT_OAUTH_TIMEOUT_SECONDS * 1000})
+        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: DEFAULT_OAUTH_TIMEOUT_MS})
       }
     } catch (error) {
       outputError(error)
@@ -165,7 +166,9 @@ export default class Login extends BaseCommand {
       const timeoutSeconds = Math.round(opts.timeoutMs / 1000)
       process.stderr.write(`Waiting for authentication (timeout: ${timeoutSeconds}s)...\n`)
 
-      const result = await waitForCallback(opts.timeoutMs)
+      const result = await waitForCallback(opts.timeoutMs).catch((error: unknown) => {
+        throw addInvalidScopeHint(error, config.baseUrl)
+      })
 
       // Validate state to prevent CSRF
       if (result.state !== state) {
@@ -267,4 +270,15 @@ export default class Login extends BaseCommand {
       })
     })
   }
+}
+
+// `invalid_scope` means the server predates the `docutray:cli` scope. Point at
+// the login that still works, keeping a custom base URL: a login without
+// --base-url resets it to production.
+function addInvalidScopeHint(error: unknown, baseUrl?: string): unknown {
+  if (!(error instanceof Error) || (error as {oauthError?: string}).oauthError !== 'invalid_scope') return error
+  const baseUrlFlag = baseUrl ? ` --base-url ${baseUrl}` : ''
+  error.message = `${error.message.replace(/\.+$/, '')}. This DocuTray server does not support choosing ` +
+    `the organization at login yet; use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`
+  return error
 }
