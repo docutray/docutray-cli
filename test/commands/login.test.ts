@@ -357,6 +357,58 @@ describe('login --oauth (non-interactive OAuth)', () => {
     expect(stderrOutput).toContain('User denied access')
   })
 
+  it('--oauth with a single (consent-bound) organization prints no fallback warning', async () => {
+    happyPathOAuthMocks()
+    await Login.run(['--oauth', '--json'])
+
+    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).not.toContain('not chosen in the browser')
+  })
+
+  it('--oauth warns and uses the first org when the server returns several', async () => {
+    happyPathOAuthMocks()
+    mockFetchOrganizations.mockResolvedValue([
+      {id: 'org_abc', name: 'My Organization', slug: 'my-org', role: 'ADMIN'},
+      {id: 'org_def', name: 'Other Org', slug: 'other-org', role: 'MEMBER'},
+    ])
+
+    await Login.run(['--oauth', '--json'])
+
+    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('Organization was not chosen in the browser; using: My Organization')
+  })
+
+  it('--oauth errors without writing config when no organizations are returned', async () => {
+    happyPathOAuthMocks()
+    mockFetchOrganizations.mockResolvedValue([])
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockCreateApiKeyFromToken).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('No organizations found')
+  })
+
+  it('--oauth surfaces invalid_scope from a server without docutray:cli and does not write config', async () => {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockRejectedValue(new Error('OAuth error: invalid_scope')),
+    })
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockExchangeCodeForToken).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    expect(closeFn).toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('invalid_scope')
+  })
+
   it('--oauth combined with --api-key is rejected up front', async () => {
     await expect(Login.run(['--oauth', '--api-key', 'dt_live_abc1234567890ABCDEF'])).rejects.toThrow('EXIT')
     expect(mockStartCallbackServer).not.toHaveBeenCalled()

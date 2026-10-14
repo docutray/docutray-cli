@@ -47,7 +47,14 @@ describe('buildAuthorizeUrl', () => {
     expect(parsed.searchParams.get('state')).toBe('test-state')
     expect(parsed.searchParams.get('code_challenge')).toBe('test-challenge')
     expect(parsed.searchParams.get('code_challenge_method')).toBe('S256')
-    expect(parsed.searchParams.get('scope')).toBe('openid')
+    expect(parsed.searchParams.get('scope')).toBe('openid docutray:cli')
+    expect(parsed.searchParams.get('prompt')).toBe('consent')
+  })
+
+  it('encodes the scope separator as %20 in the raw query', () => {
+    const url = buildAuthorizeUrl(9876, 'state', 'challenge')
+    expect(url).toContain('scope=openid%20docutray:cli')
+    expect(url).toContain('&prompt=consent&')
   })
 
   it('uses localhost in the redirect_uri (matches dashboard allowlist)', () => {

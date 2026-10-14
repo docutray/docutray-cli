@@ -188,10 +188,12 @@ export default class Login extends BaseCommand {
         throw new Error('No organizations found. Create an organization in DocuTray first.')
       }
 
-      // Use first org (future: prompt user to choose if multiple)
+      // The user picks the organization on the consent screen (scope `docutray:cli`),
+      // and the server returns only that one for a bound token. More than one means
+      // the server did not bind the token, so say which org the key is created for.
       const org = organizations[0]!
       if (organizations.length > 1) {
-        process.stderr.write(`Multiple organizations found, using: ${org.name}\n`)
+        process.stderr.write(`Organization was not chosen in the browser; using: ${org.name}\n`)
       }
 
       // Create API key from OAuth token

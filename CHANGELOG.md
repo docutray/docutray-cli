@@ -5,6 +5,16 @@ All notable changes to `@docutray/cli` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `login --oauth` (and the OAuth option of the interactive `login`) lets you choose the organization in the browser. Before, a user with several organizations was logged into an arbitrary one. The authorize request now asks for `scope=openid docutray:cli` and `prompt=consent`, so the DocuTray consent screen shows its organization selector on every login, with your active organization preselected. The server binds the token to the organization you choose, and the API key is created for it.
+
+### Notes
+
+- Requires a DocuTray deployment that supports the `docutray:cli` scope. Against an older deployment, OAuth login fails with `OAuth error: invalid_scope`; `login --api-key` keeps working.
+
 ## [0.4.1] - 2026-10-03
 
 ### Fixed

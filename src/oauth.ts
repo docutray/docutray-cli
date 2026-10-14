@@ -78,13 +78,17 @@ export function buildAuthorizeUrl(port: number, state: string, codeChallenge: st
   const redirectUri = `http://${DEFAULT_REDIRECT_URI_HOST}:${port}/callback`
   // Build query string manually to avoid URL-encoding the redirect_uri,
   // which better-auth does not decode before validating against registered URLs.
+  // `docutray:cli` (reserved to this client) makes the dashboard's consent screen
+  // show its organization selector and binds the token to the chosen org;
+  // `prompt=consent` shows that screen even when a prior consent exists.
   const query = [
     `client_id=${CLIENT_ID}`,
     `response_type=code`,
     `redirect_uri=${redirectUri}`,
     `code_challenge=${codeChallenge}`,
     `code_challenge_method=S256`,
-    `scope=openid`,
+    `scope=openid%20docutray:cli`,
+    `prompt=consent`,
     `state=${state}`,
   ].join('&')
   return `${resolvedBaseUrl}/api/auth/oauth2/authorize?${query}`
