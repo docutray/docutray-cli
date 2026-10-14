@@ -7,6 +7,7 @@ import {type Config, getConfigPath, maskApiKey, readConfig, writeConfig} from '.
 import {
   buildAuthorizeUrl,
   createApiKeyFromToken,
+  DEFAULT_OAUTH_TIMEOUT_MS,
   exchangeCodeForToken,
   fetchOrganizations,
   generatePKCE,
@@ -20,8 +21,7 @@ interface OAuthLoginOptions {
   timeoutMs: number
 }
 
-const DEFAULT_OAUTH_TIMEOUT_SECONDS = 180
-const TTY_MENU_OAUTH_TIMEOUT_MS = 120_000
+const DEFAULT_OAUTH_TIMEOUT_SECONDS = DEFAULT_OAUTH_TIMEOUT_MS / 1000
 
 export default class Login extends BaseCommand {
   static args = {
@@ -104,7 +104,7 @@ export default class Login extends BaseCommand {
         const apiKey = validateApiKey(rawKey)
         await this.loginWithApiKey(apiKey, config)
       } else {
-        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: TTY_MENU_OAUTH_TIMEOUT_MS})
+        await this.loginWithOAuth(config, {openBrowser: true, timeoutMs: DEFAULT_OAUTH_TIMEOUT_MS})
       }
     } catch (error) {
       outputError(error)
@@ -132,7 +132,7 @@ export default class Login extends BaseCommand {
     const {codeChallenge, codeVerifier} = generatePKCE()
     const state = crypto.randomUUID()
 
-    const {close, port, waitForCallback} = await startCallbackServer()
+    const {close, port, waitForCallback} = await startCallbackServer({state})
 
     // Cleanup on signal so the bound socket doesn't linger and block subsequent logins.
     const onSignal = (signal: NodeJS.Signals) => {
@@ -166,7 +166,9 @@ export default class Login extends BaseCommand {
       const timeoutSeconds = Math.round(opts.timeoutMs / 1000)
       process.stderr.write(`Waiting for authentication (timeout: ${timeoutSeconds}s)...\n`)
 
-      const result = await waitForCallback(opts.timeoutMs)
+      const result = await waitForCallback(opts.timeoutMs).catch((error: unknown) => {
+        throw addInvalidScopeHint(error, config.baseUrl)
+      })
 
       // Validate state to prevent CSRF
       if (result.state !== state) {
@@ -188,10 +190,12 @@ export default class Login extends BaseCommand {
         throw new Error('No organizations found. Create an organization in DocuTray first.')
       }
 
-      // Use first org (future: prompt user to choose if multiple)
+      // The user picks the organization on the consent screen (scope `docutray:cli`),
+      // and the server returns only that one for a bound token. More than one means
+      // the server did not bind the token, so say which org the key is created for.
       const org = organizations[0]!
       if (organizations.length > 1) {
-        process.stderr.write(`Multiple organizations found, using: ${org.name}\n`)
+        process.stderr.write(`Organization was not chosen in the browser; using: ${org.name}\n`)
       }
 
       // Create API key from OAuth token
@@ -266,4 +270,23 @@ export default class Login extends BaseCommand {
       })
     })
   }
+}
+
+// `invalid_scope` means the server predates the `docutray:cli` scope. Point at
+// the login that still works, keeping a custom base URL: a login without
+// --base-url resets it to production. Matches on `oauthError` rather than
+// `instanceof OAuthCallbackError` so tests can mock the oauth module.
+function addInvalidScopeHint(error: unknown, baseUrl?: string): unknown {
+  if (!(error instanceof Error) || (error as {oauthError?: string}).oauthError !== 'invalid_scope') return error
+  const baseUrlFlag = baseUrl ? ` --base-url ${shellQuote(baseUrl)}` : ''
+  return new Error(
+    `${error.message.replace(/\.+$/, '')}. This DocuTray server does not support choosing the organization ` +
+    `at login yet; use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`,
+    {cause: error},
+  )
+}
+
+// Quote a value for the suggested shell command unless it is plainly safe.
+function shellQuote(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", String.raw`'\''`)}'`
 }

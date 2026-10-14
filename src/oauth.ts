@@ -21,7 +21,9 @@ const DEFAULT_CALLBACK_PORT = 9876
 // fail fast with a message that names the conflicting port. Tests and
 // future-allowlist callers can opt into retry by passing a non-zero value.
 const DEFAULT_PORT_RETRIES = 0
-const OAUTH_TIMEOUT_MS = 120_000
+// Every login goes through the dashboard's consent screen (organization
+// selector), so leave room for sign-in plus that extra step.
+export const DEFAULT_OAUTH_TIMEOUT_MS = 180_000
 
 export interface CallbackServerOptions {
   /**
@@ -37,6 +39,13 @@ export interface CallbackServerOptions {
    * Ignored when preferredPort is 0 (ephemeral). Defaults to 3.
    */
   retries?: number
+  /**
+   * The `state` sent in the authorize URL. When set, error callbacks carrying
+   * another state are ignored (answered 400), so a local process or web page
+   * hitting the callback cannot abort the login or choose the error shown.
+   * The authorization server echoes `state` on its error redirects.
+   */
+  state?: string
 }
 
 export interface PKCEChallenge {
@@ -78,13 +87,17 @@ export function buildAuthorizeUrl(port: number, state: string, codeChallenge: st
   const redirectUri = `http://${DEFAULT_REDIRECT_URI_HOST}:${port}/callback`
   // Build query string manually to avoid URL-encoding the redirect_uri,
   // which better-auth does not decode before validating against registered URLs.
+  // `docutray:cli` (reserved to this client) makes the dashboard's consent screen
+  // show its organization selector and binds the token to the chosen org;
+  // `prompt=consent` shows that screen even when a prior consent exists.
   const query = [
     `client_id=${CLIENT_ID}`,
     `response_type=code`,
     `redirect_uri=${redirectUri}`,
     `code_challenge=${codeChallenge}`,
     `code_challenge_method=S256`,
-    `scope=openid`,
+    `scope=openid%20docutray:cli`,
+    `prompt=consent`,
     `state=${state}`,
   ].join('&')
   return `${resolvedBaseUrl}/api/auth/oauth2/authorize?${query}`
@@ -106,6 +119,10 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     resolveCallback = resolve
     rejectCallback = reject
   })
+  // A callback can arrive before waitForCallback() attaches its handlers (for
+  // example while the browser is being opened). Mark the rejection as handled
+  // so Node doesn't crash; waitForCallback() still receives it.
+  callbackPromise.catch(() => {})
 
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', `http://${host}`)
@@ -122,10 +139,15 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
     const error = url.searchParams.get('error')
 
     if (error) {
-      const description = url.searchParams.get('error_description') || error
+      if (options.state !== undefined && state !== options.state) {
+        res.writeHead(400, {'Connection': 'close', 'Content-Type': 'text/html'})
+        res.end('<html><body><h1>Invalid callback</h1><p>State mismatch.</p></body></html>')
+        return
+      }
+
       res.writeHead(200, {'Connection': 'close', 'Content-Type': 'text/html'})
       res.end('<html><body><h1>Authentication failed</h1><p>You can close this window.</p></body></html>')
-      rejectCallback(new Error(`OAuth error: ${description}`))
+      rejectCallback(new OAuthCallbackError(error, url.searchParams.get('error_description')))
       return
     }
 
@@ -152,7 +174,7 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
       server.close()
     },
     port,
-    waitForCallback: (timeout = OAUTH_TIMEOUT_MS) => {
+    waitForCallback: (timeout = DEFAULT_OAUTH_TIMEOUT_MS) => {
       const timer = setTimeout(() => {
         rejectCallback(new Error(`Authentication timed out after ${timeout / 1000}s. Please try again.`))
       }, timeout)
@@ -162,6 +184,54 @@ export async function startCallbackServer(options: CallbackServerOptions = {}): 
       })
     },
   }
+}
+
+/**
+ * Error redirected to the callback by the authorization server. Keeps the
+ * OAuth error code (agents match on it) next to the server's description.
+ */
+export class OAuthCallbackError extends Error {
+  readonly oauthError: string
+
+  constructor(error: string, description: null | string) {
+    // The callback is reachable by any local process, so never echo control
+    // characters (terminal escape sequences) from its query string.
+    const code = stripControlChars(error)
+    const detail = description ? stripControlChars(description) : ''
+    super(detail ? `OAuth error (${code}): ${detail}` : `OAuth error: ${code}`)
+    this.oauthError = code
+  }
+}
+
+function stripControlChars(value: string): string {
+  // C0/C1 controls, plus zero-width and bidi format characters that can hide or reorder text.
+  return value.replaceAll(/[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g, '')
+}
+
+/**
+ * Builds the error for a failed call to a DocuTray OAuth endpoint. It carries
+ * `statusCode` and `body` so `outputError` prints the status (`(401)` on a TTY,
+ * `status` in piped JSON). The message names the failed step and uses the
+ * server's `error` (plus `error_description`, if any) when the body is JSON.
+ * `body.error` repeats the message on purpose: `outputError` prints
+ * `body.error` over `message`, and the server's own body would drop the step.
+ */
+async function endpointError(response: Response, step: string): Promise<Error> {
+  const text = await response.text()
+  let detail = text
+  try {
+    const body = JSON.parse(text) as {error?: unknown; error_description?: unknown}
+    if (typeof body?.error === 'string' && body.error) {
+      detail = typeof body.error_description === 'string' && body.error_description
+        ? `${body.error}: ${body.error_description}`
+        : body.error
+    }
+  } catch {
+    // Not JSON; keep the raw body.
+  }
+
+  const message = `${step}: ${detail}`
+  return Object.assign(new Error(message), {body: {error: message}, statusCode: response.status})
 }
 
 function listenWithRetry(
@@ -228,8 +298,7 @@ export async function exchangeCodeForToken(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Token exchange failed (${response.status}): ${text}`)
+    throw await endpointError(response, 'Token exchange failed')
   }
 
   return response.json() as Promise<TokenResponse>
@@ -255,8 +324,7 @@ export async function fetchOrganizations(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`Failed to fetch organizations (${response.status}): ${text}`)
+    throw await endpointError(response, 'Failed to fetch organizations')
   }
 
   const data = await response.json() as {organizations: OAuthOrganization[]}
@@ -279,8 +347,7 @@ export async function createApiKeyFromToken(
   })
 
   if (!response.ok) {
-    const text = await response.text()
-    throw new Error(`API key creation failed (${response.status}): ${text}`)
+    throw await endpointError(response, 'API key creation failed')
   }
 
   return response.json() as Promise<ApiKeyResponse>

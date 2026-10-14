@@ -19,6 +19,7 @@ vi.mock('../../src/config.js', () => ({
 vi.mock('../../src/oauth.js', () => ({
   buildAuthorizeUrl: vi.fn(() => 'https://app.docutray.com/api/auth/oauth2/authorize?test=1'),
   createApiKeyFromToken: vi.fn(),
+  DEFAULT_OAUTH_TIMEOUT_MS: 180_000,
   exchangeCodeForToken: vi.fn(),
   fetchOrganizations: vi.fn(),
   generatePKCE: vi.fn(() => ({codeVerifier: 'test-verifier', codeChallenge: 'test-challenge'})),
@@ -179,11 +180,12 @@ describe('login with OAuth2 flow', () => {
 
   it('executes full OAuth flow and saves org info to config', async () => {
     const {closeFn} = setupOAuthMocks()
+    const waitForCallback = vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'})
 
     mockStartCallbackServer.mockResolvedValue({
       port: 9876,
       close: closeFn,
-      waitForCallback: vi.fn().mockResolvedValue({code: 'auth-code', state: 'fixed-state-123'}),
+      waitForCallback,
     })
 
     const originalIsTTY = process.stderr.isTTY
@@ -212,6 +214,8 @@ describe('login with OAuth2 flow', () => {
         }),
       )
       expect(closeFn).toHaveBeenCalled()
+      // Same budget as --oauth: every login now goes through the consent screen.
+      expect(waitForCallback).toHaveBeenCalledWith(180_000)
     } finally {
       process.stderr.isTTY = originalIsTTY
     }
@@ -272,7 +276,8 @@ describe('login --oauth (non-interactive OAuth)', () => {
 
     await Login.run(['--oauth', '--json'])
 
-    expect(mockStartCallbackServer).toHaveBeenCalled()
+    // The callback server only accepts error redirects carrying this login's state.
+    expect(mockStartCallbackServer).toHaveBeenCalledWith({state: 'fixed-state-123'})
     expect(mockWriteConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         apiKey: 'dt_live_newkey123',
@@ -290,6 +295,8 @@ describe('login --oauth (non-interactive OAuth)', () => {
 
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('Open this URL to authorize:')
+    // A single (consent-bound) organization needs no fallback warning.
+    expect(stderrOutput).not.toContain('not chosen in the browser')
   })
 
   it('--oauth uses localhost for the redirect_uri sent to token exchange', async () => {
@@ -355,6 +362,74 @@ describe('login --oauth (non-interactive OAuth)', () => {
     expect(closeFn).toHaveBeenCalled()
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('User denied access')
+  })
+
+  it.each([
+    {args: [], baseUrlFlag: ''},
+    {args: ['--base-url', 'https://staging.docutray.com'], baseUrlFlag: ' --base-url https://staging.docutray.com'},
+    {args: ['--base-url', "https://x.example/a b'c"], baseUrlFlag: String.raw` --base-url 'https://x.example/a b'\''c'`},
+  ])('--oauth on a server without docutray:cli fails with an --api-key hint$baseUrlFlag', async ({args, baseUrlFlag}) => {
+    const closeFn = vi.fn()
+    mockStartCallbackServer.mockResolvedValue({
+      port: 54321,
+      close: closeFn,
+      waitForCallback: vi.fn().mockRejectedValue(Object.assign(
+        new Error('OAuth error (invalid_scope): The following scopes are invalid: docutray:cli'),
+        {oauthError: 'invalid_scope'},
+      )),
+    })
+
+    await expect(Login.run(['--oauth', '--json', ...args])).rejects.toThrow('EXIT')
+
+    expect(mockExchangeCodeForToken).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    expect(closeFn).toHaveBeenCalled()
+    const errorWrite = stderrSpy.mock.calls.map((c) => c[0] as string).find((w) => w.startsWith('{'))
+    const parsed = JSON.parse(errorWrite!)
+    expect(parsed.error).toBe(
+      'OAuth error (invalid_scope): The following scopes are invalid: docutray:cli. ' +
+      'This DocuTray server does not support choosing the organization at login yet; ' +
+      `use \`docutray login --api-key <key>${baseUrlFlag}\` with a key created in the dashboard.`,
+    )
+  })
+
+  it('--oauth reports the server message and status when the organizations call fails', async () => {
+    happyPathOAuthMocks()
+    const message = 'Failed to fetch organizations: Ya no eres miembro de la organización autorizada.'
+    mockFetchOrganizations.mockRejectedValue(Object.assign(new Error(message), {body: {error: message}, statusCode: 401}))
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const errorWrite = stderrSpy.mock.calls.map((c) => c[0] as string).find((w) => w.startsWith('{'))
+    const parsed = JSON.parse(errorWrite!)
+    expect(parsed).toEqual({error: message, status: 401})
+  })
+
+  it('--oauth warns and uses the first org when the server returns several', async () => {
+    happyPathOAuthMocks()
+    mockFetchOrganizations.mockResolvedValue([
+      {id: 'org_abc', name: 'My Organization', slug: 'my-org', role: 'ADMIN'},
+      {id: 'org_def', name: 'Other Org', slug: 'other-org', role: 'MEMBER'},
+    ])
+
+    await Login.run(['--oauth', '--json'])
+
+    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('Organization was not chosen in the browser; using: My Organization')
+  })
+
+  it('--oauth errors without writing config when no organizations are returned', async () => {
+    happyPathOAuthMocks()
+    mockFetchOrganizations.mockResolvedValue([])
+
+    await expect(Login.run(['--oauth', '--json'])).rejects.toThrow('EXIT')
+
+    expect(mockCreateApiKeyFromToken).not.toHaveBeenCalled()
+    expect(mockWriteConfig).not.toHaveBeenCalled()
+    const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
+    expect(stderrOutput).toContain('No organizations found')
   })
 
   it('--oauth combined with --api-key is rejected up front', async () => {
