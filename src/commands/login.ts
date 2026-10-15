@@ -7,6 +7,7 @@ import {type Config, getConfigPath, maskApiKey, readConfig, writeConfig} from '.
 import {
   buildAuthorizeUrl,
   createApiKeyFromToken,
+  DEFAULT_BASE_URL,
   DEFAULT_OAUTH_TIMEOUT_MS,
   exchangeCodeForToken,
   fetchOrganizations,
@@ -147,8 +148,14 @@ export default class Login extends BaseCommand {
     process.once('SIGINT', onSignal)
     process.once('SIGTERM', onSignal)
 
+    // Resolve the server once: --base-url (already in config.baseUrl), then
+    // DOCUTRAY_BASE_URL (later commands honor it too), then production. Never the
+    // baseUrl on disk: run() cleared it in memory, and the oauth.ts fallback
+    // (getBaseUrl) would re-read it and authorize against the old server.
+    const baseUrl = config.baseUrl || process.env.DOCUTRAY_BASE_URL || DEFAULT_BASE_URL
+
     try {
-      const authorizeUrl = buildAuthorizeUrl(port, state, codeChallenge, config.baseUrl)
+      const authorizeUrl = buildAuthorizeUrl(port, state, codeChallenge, baseUrl)
 
       // Agent-detectable URL line first, before any other status output.
       process.stderr.write(`Open this URL to authorize: ${authorizeUrl}\n`)
@@ -180,11 +187,11 @@ export default class Login extends BaseCommand {
 
       // Exchange authorization code for access token
       process.stderr.write('Exchanging authorization code...\n')
-      const tokenResponse = await exchangeCodeForToken(result.code, codeVerifier, redirectUri, config.baseUrl)
+      const tokenResponse = await exchangeCodeForToken(result.code, codeVerifier, redirectUri, baseUrl)
 
       // Fetch user's organizations using the access token
       process.stderr.write('Fetching organizations...\n')
-      const organizations = await fetchOrganizations(tokenResponse.access_token, config.baseUrl)
+      const organizations = await fetchOrganizations(tokenResponse.access_token, baseUrl)
 
       if (organizations.length === 0) {
         throw new Error('No organizations found. Create an organization in DocuTray first.')
@@ -200,7 +207,7 @@ export default class Login extends BaseCommand {
 
       // Create API key from OAuth token
       process.stderr.write('Creating API key...\n')
-      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, org.id, config.baseUrl)
+      const apiKeyResponse = await createApiKeyFromToken(tokenResponse.access_token, org.id, baseUrl)
 
       // Save to config
       config.apiKey = apiKeyResponse.apiKey
