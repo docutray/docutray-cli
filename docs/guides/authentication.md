@@ -22,10 +22,10 @@ docutray login --oauth
 The CLI prints the authorization URL on stderr, opens your browser and waits for the callback (180 seconds by default). In the browser:
 
 1. Sign in to DocuTray if you aren't already.
-2. On the consent screen, **choose the organization** the CLI will work with. Your active organization is preselected.
+2. On the consent screen, **choose the organization** the CLI will work with. Your active organization is preselected, and the one you choose also becomes your active organization in the DocuTray dashboard.
 3. Click **Authorize**.
 
-The CLI then creates an API key for that organization and stores it in `~/.config/docutray/config.json` (permissions `0600`). The success output names the organization; the key is masked:
+The CLI then creates an API key for that organization and stores it in `~/.config/docutray/config.json` (permissions `0600`). In a terminal it prints `✓ Login successful — Acme (dtQx****7aZk)`. With `--json`, or when stdout is piped (as in an agent shell), it prints JSON; the key is masked:
 
 ```json
 {
@@ -44,11 +44,13 @@ docutray login --oauth --no-browser   # print the URL only; open it yourself
 docutray login --oauth --timeout 60   # wait 60 seconds for the callback
 ```
 
+The browser must run on the same machine as the CLI: after you authorize, it redirects to `http://localhost:9876/callback`. Over SSH or in a remote container, forward the port first (`ssh -L 9876:localhost:9876 <host>`) or use an API key instead.
+
 Running `docutray login` with no arguments in a terminal asks whether you already have an API key: answer `N` to use this same OAuth flow, or `y` to paste a key.
 
 #### Switching organizations
 
-Run `docutray login --oauth` again and choose another organization on the consent screen. The new key replaces the one in the config file.
+Run `docutray login --oauth` again and choose another organization on the consent screen. The new key replaces the one in the config file. Against staging or a self-hosted deployment, pass the same `--base-url` again (see [Custom API base URL](#custom-api-base-url)).
 
 Each OAuth login creates a **new** API key on the server, and `docutray logout` only deletes the local file. Keys from earlier logins stay active until you revoke them in the dashboard (see [Getting an API key from the dashboard](#getting-an-api-key-from-the-dashboard)): they appear as `CLI - <organization name>`.
 
@@ -78,7 +80,7 @@ This is the recommended method for:
 
 1. Sign in to the [DocuTray Dashboard](https://app.docutray.com) and switch to the organization you want the key for.
 2. Go to **Settings > Organization > API Keys**.
-3. Click **Create API Key** and copy the key. It is shown only once.
+3. Click **New API Key**, enter a name, then click **Create API Key** and copy the key. It is shown only once.
 
 Dashboard keys may have no prefix; keys created by `docutray login --oauth` start with `dt`. The CLI accepts both. Revoke keys you no longer use from the same page.
 
@@ -102,7 +104,7 @@ Output:
 }
 ```
 
-The `source` field indicates where the API key was found: `environment`, `config`, or `none`. `organizationId` and `organizationName` appear when the key came from `docutray login --oauth`.
+The `source` field indicates where the API key was found: `environment`, `config`, or `none`. `organizationId` and `organizationName` describe the organization of the last `docutray login --oauth` saved in the config file. When `source` is `environment`, they do not describe the key in `DOCUTRAY_API_KEY`.
 
 ## CI/CD configuration
 
@@ -159,7 +161,7 @@ docutray login --oauth --base-url https://staging.docutray.com
 export DOCUTRAY_BASE_URL=https://staging.docutray.com
 ```
 
-A `login` without `--base-url` resets the stored base URL to production.
+Pass `--base-url` on **every** `login` against a deployment other than production, including when you switch organizations. Check the stored URL with `docutray status`.
 
 ## Logging out
 
@@ -179,8 +181,9 @@ This deletes the config file. It does **not** invalidate the API key on the serv
 | `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` | The DocuTray deployment predates choosing the organization at login (typically a custom `--base-url`) | Use `docutray login --api-key <key>` with a key created in that deployment's dashboard |
 | `Organization was not chosen in the browser; using: <name>` on stderr | The server did not bind the login to an organization, so the CLI used the first one it listed | Check `organizationName` in the output; use `--api-key` if it is not the one you want |
 | `OAuth error (access_denied): …` | *Deny* was clicked on the consent screen | Run the login again and click **Authorize** |
-| `Failed to fetch organizations: … Vuelve a iniciar sesión` | You are no longer a member of the organization you chose | Run `docutray login --oauth` again and choose another organization |
-| Login times out | The browser step wasn't completed, or `localhost:9876` (the callback) is blocked | Complete the consent in the browser, pass `--timeout`, or use `--no-browser` and open the URL yourself |
+| `Failed to fetch organizations: …` or `API key creation failed: …` with `Vuelve a iniciar sesión` | You are no longer a member of the organization you chose | Run `docutray login --oauth` again and choose another organization |
+| `Port 9876 is already in use…` | Another `docutray login` is still waiting for its callback, or another program uses the port | Finish or stop the other login (`lsof -nP -iTCP:9876` shows the process), then retry |
+| Login times out | The consent wasn't completed in the browser, or the browser runs on another machine (SSH, remote container) and its redirect to `localhost:9876` never reaches the CLI | Complete the consent, pass `--timeout` for more time, or forward port 9876 to the machine running the CLI |
 
 ## Security best practices
 
