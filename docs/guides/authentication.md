@@ -44,7 +44,7 @@ docutray login --oauth --no-browser   # print the URL only; open it yourself
 docutray login --oauth --timeout 60   # wait 60 seconds for the callback
 ```
 
-The browser must run on the same machine as the CLI: after you authorize, it redirects to `http://localhost:9876/callback`. Over SSH or in a remote container, forward the port first (`ssh -L 9876:localhost:9876 <host>`) or use an API key instead.
+The browser must run on the same machine as the CLI: after you authorize, it redirects to `http://localhost:9876/callback`. Over SSH or in a remote container, forward the port (`ssh -L 9876:localhost:9876 <host>`), run `docutray login --oauth --no-browser` on the remote host and open the printed URL in your local browser. Or use an API key instead.
 
 Running `docutray login` with no arguments in a terminal asks whether you already have an API key: answer `N` to use this same OAuth flow, or `y` to paste a key.
 
@@ -52,7 +52,7 @@ Running `docutray login` with no arguments in a terminal asks whether you alread
 
 Run `docutray login --oauth` again and choose another organization on the consent screen. The new key replaces the one in the config file. Against staging or a self-hosted deployment, pass the same `--base-url` again (see [Custom API base URL](#custom-api-base-url)).
 
-Each OAuth login creates a **new** API key on the server, and `docutray logout` only deletes the local file. Keys from earlier logins stay active until you revoke them in the dashboard (see [Getting an API key from the dashboard](#getting-an-api-key-from-the-dashboard)): they appear as `CLI - <organization name>`.
+Each OAuth login creates a **new** API key on the server, and `docutray logout` only deletes the local file. Keys from earlier logins stay active until you delete them in the dashboard (see [Getting an API key from the dashboard](#getting-an-api-key-from-the-dashboard)): they appear as `CLI - <organization name>`.
 
 ### 2. Paste an existing API key
 
@@ -82,7 +82,7 @@ This is the recommended method for:
 2. Go to **Settings > Organization > API Keys**.
 3. Click **New API Key**, enter a name, then click **Create API Key** and copy the key. It is shown only once.
 
-Dashboard keys may have no prefix; keys created by `docutray login --oauth` start with `dt`. The CLI accepts both. Revoke keys you no longer use from the same page.
+Dashboard keys may have no prefix; keys created by `docutray login --oauth` start with `dt`. The CLI accepts both. Delete keys you no longer use from the same page.
 
 ## Verifying authentication
 
@@ -90,7 +90,7 @@ Dashboard keys may have no prefix; keys created by `docutray login --oauth` star
 docutray status
 ```
 
-Output:
+In a terminal it prints one line per field (`✓ Authenticated: yes`, `API Key`, `Source`, …). With `--json`, or when stdout is piped, the output is:
 
 ```json
 {
@@ -104,7 +104,7 @@ Output:
 }
 ```
 
-The `source` field indicates where the API key was found: `environment`, `config`, or `none`. `organizationId` and `organizationName` describe the organization of the last `docutray login --oauth` saved in the config file. When `source` is `environment`, they do not describe the key in `DOCUTRAY_API_KEY`.
+The `source` field indicates where the API key was found: `environment`, `config`, or `none`. `organizationId` and `organizationName` appear only after `docutray login --oauth`: they come from the config file, and `docutray login <key>` clears them. When `source` is `environment`, they do not describe the key in `DOCUTRAY_API_KEY`.
 
 ## CI/CD configuration
 
@@ -146,7 +146,7 @@ CMD ["docutray", "convert", "invoice.pdf", "--type", "electronic-invoice"]
 ```
 
 ```bash
-docker run -e DOCUTRAY_API_KEY="$DOCUTRAY_API_KEY" my-processor
+docker run -e DOCUTRAY_API_KEY my-processor   # passes the variable from your shell
 ```
 
 ## Custom API base URL
@@ -161,7 +161,7 @@ docutray login --oauth --base-url https://staging.docutray.com
 export DOCUTRAY_BASE_URL=https://staging.docutray.com
 ```
 
-Pass `--base-url` on **every** `login` against a deployment other than production, including when you switch organizations. Check the stored URL with `docutray status`.
+Pass `--base-url` on **every** `login` against a deployment other than production, including when you switch organizations. `docutray status` shows the URL in use (`DOCUTRAY_BASE_URL` takes precedence over the config file).
 
 ## Logging out
 
@@ -171,14 +171,15 @@ To remove stored credentials from the local machine:
 docutray logout
 ```
 
-This deletes the config file. It does **not** invalidate the API key on the server — revoke keys from the dashboard.
+This deletes the config file. It does **not** invalidate the API key on the server — delete keys from the dashboard.
 
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | Logged into the wrong organization | Another organization was chosen on the consent screen, or the CLI is older than 0.5.0 (it picked one on its own) | Run `docutray login --oauth` again and choose the organization. Check `docutray --version` and upgrade with `npm install -g @docutray/cli@latest` if it is below 0.5.0 |
-| `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` | The DocuTray deployment predates choosing the organization at login (typically a custom `--base-url`) | Use `docutray login --api-key <key>` with a key created in that deployment's dashboard |
+| Commands still use the previous organization after a new login | `DOCUTRAY_API_KEY` is set in your shell; it takes precedence over the config file (`docutray status` shows the environment variable as the source) | `unset DOCUTRAY_API_KEY`, or replace it with the new key |
+| `OAuth error (invalid_scope): The following scopes are invalid: docutray:cli` | The DocuTray deployment predates choosing the organization at login (typically a custom `--base-url`) | Use `docutray login --api-key <your-api-key> --base-url <url>` with a key created in that deployment's dashboard |
 | `Organization was not chosen in the browser; using: <name>` on stderr | The server did not bind the login to an organization, so the CLI used the first one it listed | Check `organizationName` in the output; use `--api-key` if it is not the one you want |
 | `OAuth error (access_denied): …` | *Deny* was clicked on the consent screen | Run the login again and click **Authorize** |
 | `Failed to fetch organizations: …` or `API key creation failed: …` with `Vuelve a iniciar sesión` | You are no longer a member of the organization you chose | Run `docutray login --oauth` again and choose another organization |
@@ -189,7 +190,7 @@ This deletes the config file. It does **not** invalidate the API key on the serv
 
 - Never commit API keys to version control
 - Use environment variables in CI/CD, not `docutray login`
-- Revoke keys you no longer use, including those left by earlier OAuth logins
+- Delete keys you no longer use, including those left by earlier OAuth logins
 - Rotate keys periodically from the dashboard
 - Use separate keys for production and development
 - The config file is created with `0600` permissions (owner-only read/write)
