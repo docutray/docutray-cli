@@ -10,7 +10,7 @@ export default class Status extends BaseCommand {
   static examples = [
     {command: '<%= config.bin %> status', description: 'Check current authentication status'},
     {command: '<%= config.bin %> status --json', description: 'Output as JSON (default when piped)'},
-    {command: 'DOCUTRAY_API_KEY=dt_live_abc123 docutray status', description: 'Verify env var authentication is detected'},
+    {command: 'DOCUTRAY_API_KEY=<your-api-key> docutray status', description: 'Verify env var authentication is detected'},
   ]
 
   static flags = {

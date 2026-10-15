@@ -46,11 +46,11 @@ EXAMPLES
 
   Non-interactive login with API key as argument
 
-    $ docutray login dt_live_abc123
+    $ docutray login <your-api-key>
 
   Non-interactive login with API key flag
 
-    $ docutray login --api-key dt_live_abc123
+    $ docutray login --api-key <your-api-key>
 
   Login with a custom API base URL
 
@@ -58,7 +58,7 @@ EXAMPLES
 
   Alternative: use env var instead of login
 
-    DOCUTRAY_API_KEY=dt_live_abc123 docutray status
+    DOCUTRAY_API_KEY=<your-api-key> docutray status
 
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/login

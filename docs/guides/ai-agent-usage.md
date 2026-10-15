@@ -14,7 +14,7 @@ This guide covers how to use the DocuTray CLI from AI agents (Claude Code, GitHu
 Use the `DOCUTRAY_API_KEY` environment variable:
 
 ```bash
-export DOCUTRAY_API_KEY=dt_live_abc123
+export DOCUTRAY_API_KEY=<your-api-key>
 ```
 
 This is the recommended method for agents. Never use `docutray login` from an agent — it requires interactive input.
@@ -147,7 +147,7 @@ import { execSync } from 'node:child_process';
 const result = JSON.parse(
   execSync('docutray convert invoice.pdf -t electronic-invoice', {
     encoding: 'utf-8',
-    env: { ...process.env, DOCUTRAY_API_KEY: 'dt_live_abc123' },
+    env: { ...process.env, DOCUTRAY_API_KEY: '<your-api-key>' },
   })
 );
 
@@ -164,7 +164,7 @@ import subprocess
 result = subprocess.run(
     ["docutray", "convert", "invoice.pdf", "-t", "electronic-invoice"],
     capture_output=True, text=True,
-    env={**os.environ, "DOCUTRAY_API_KEY": "dt_live_abc123"}
+    env={**os.environ, "DOCUTRAY_API_KEY": "<your-api-key>"}
 )
 
 if result.returncode == 0:

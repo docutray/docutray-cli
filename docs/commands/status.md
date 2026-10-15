@@ -32,7 +32,7 @@ EXAMPLES
 
   Verify env var authentication is detected
 
-    DOCUTRAY_API_KEY=dt_live_abc123 docutray status
+    DOCUTRAY_API_KEY=<your-api-key> docutray status
 
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/status

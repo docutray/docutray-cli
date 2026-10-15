@@ -34,10 +34,10 @@ export default class Login extends BaseCommand {
     {command: '<%= config.bin %> login', description: 'Interactive login — choose API key or OAuth2 browser login'},
     {command: '<%= config.bin %> login --oauth', description: 'Login via OAuth in the browser (works in agents/CI without a TTY)'},
     {command: '<%= config.bin %> login --oauth --no-browser', description: 'Print the OAuth URL but do not open the browser'},
-    {command: '<%= config.bin %> login dt_live_abc123', description: 'Non-interactive login with API key as argument'},
-    {command: '<%= config.bin %> login --api-key dt_live_abc123', description: 'Non-interactive login with API key flag'},
+    {command: '<%= config.bin %> login <your-api-key>', description: 'Non-interactive login with API key as argument'},
+    {command: '<%= config.bin %> login --api-key <your-api-key>', description: 'Non-interactive login with API key flag'},
     {command: '<%= config.bin %> login --base-url https://staging.docutray.com', description: 'Login with a custom API base URL'},
-    {command: 'DOCUTRAY_API_KEY=dt_live_abc123 docutray status', description: 'Alternative: use env var instead of login'},
+    {command: 'DOCUTRAY_API_KEY=<your-api-key> docutray status', description: 'Alternative: use env var instead of login'},
   ]
 
   static flags = {
