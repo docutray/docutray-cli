@@ -5,6 +5,17 @@ All notable changes to `@docutray/cli` are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-10-15
+
+### Fixed
+
+- `login --oauth` without `--base-url` (and the OAuth option of the interactive `login`) now runs against production, or against `DOCUTRAY_BASE_URL` when it is set. Before, after a login with `--base-url`, a later login without the flag still authorized and created the API key against that earlier URL, then saved the key with the production URL, so the next command failed with 401 ([#46], [#49]). `--base-url` still wins, and it is still the only value saved in the config file.
+
+### Documentation
+
+- The authentication guide covers `login --oauth`, choosing the organization on the consent screen, switching organizations, `--base-url` for non-production deployments, SSH and remote containers, and a troubleshooting table for the OAuth errors ([#44], [#45]).
+- API key examples in `--help`, the command reference, the README and the AI agent guide use a `<your-api-key>` placeholder instead of `dt_live_abc123`, a format no real key has and that `login` rejects ([#47], [#48]).
+
 ## [0.5.0] - 2026-10-14
 
 ### Fixed
@@ -112,6 +123,7 @@ Refinements to the OAuth2 login flow introduced in 0.2.0 ([#27]):
 
 - README heading hierarchy and an outdated `--table` flag reference.
 
+[0.5.1]: https://github.com/docutray/docutray-cli/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/docutray/docutray-cli/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/docutray/docutray-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/docutray/docutray-cli/compare/v0.3.2...v0.4.0
@@ -134,3 +146,9 @@ Refinements to the OAuth2 login flow introduced in 0.2.0 ([#27]):
 [#38]: https://github.com/docutray/docutray-cli/issues/38
 [#39]: https://github.com/docutray/docutray-cli/pull/39
 [#42]: https://github.com/docutray/docutray-cli/pull/42
+[#44]: https://github.com/docutray/docutray-cli/issues/44
+[#45]: https://github.com/docutray/docutray-cli/pull/45
+[#46]: https://github.com/docutray/docutray-cli/issues/46
+[#47]: https://github.com/docutray/docutray-cli/issues/47
+[#48]: https://github.com/docutray/docutray-cli/pull/48
+[#49]: https://github.com/docutray/docutray-cli/pull/49
