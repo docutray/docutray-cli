@@ -19,6 +19,7 @@ vi.mock('../../src/config.js', () => ({
 vi.mock('../../src/oauth.js', () => ({
   buildAuthorizeUrl: vi.fn(() => 'https://app.docutray.com/api/auth/oauth2/authorize?test=1'),
   createApiKeyFromToken: vi.fn(),
+  DEFAULT_BASE_URL: 'https://app.docutray.com',
   DEFAULT_OAUTH_TIMEOUT_MS: 180_000,
   exchangeCodeForToken: vi.fn(),
   fetchOrganizations: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock('node:readline', () => {
 
 import {writeConfig, readConfig} from '../../src/config.js'
 import {
+  buildAuthorizeUrl,
   createApiKeyFromToken,
   exchangeCodeForToken,
   fetchOrganizations,
@@ -56,10 +58,21 @@ import {
 import Login from '../../src/commands/login.js'
 
 const mockWriteConfig = vi.mocked(writeConfig)
+const mockReadConfig = vi.mocked(readConfig)
+const mockBuildAuthorizeUrl = vi.mocked(buildAuthorizeUrl)
 const mockStartCallbackServer = vi.mocked(startCallbackServer)
 const mockExchangeCodeForToken = vi.mocked(exchangeCodeForToken)
 const mockFetchOrganizations = vi.mocked(fetchOrganizations)
 const mockCreateApiKeyFromToken = vi.mocked(createApiKeyFromToken)
+
+// login honors DOCUTRAY_BASE_URL, so a value in the developer's shell must not leak in.
+beforeEach(() => {
+  vi.stubEnv('DOCUTRAY_BASE_URL', '')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 describe('login with --api-key flag', () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>
@@ -202,10 +215,10 @@ describe('login with OAuth2 flow', () => {
         'auth-code',
         'test-verifier',
         'http://localhost:9876/callback',
-        undefined,
+        'https://app.docutray.com',
       )
-      expect(mockFetchOrganizations).toHaveBeenCalledWith('oauth-token-123', undefined)
-      expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
+      expect(mockFetchOrganizations).toHaveBeenCalledWith('oauth-token-123', 'https://app.docutray.com')
+      expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', 'https://app.docutray.com')
       expect(mockWriteConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: 'dt_live_newkey123',
@@ -306,8 +319,69 @@ describe('login --oauth (non-interactive OAuth)', () => {
       'auth-code',
       'test-verifier',
       'http://localhost:54321/callback',
-      undefined,
+      'https://app.docutray.com',
     )
+  })
+
+  describe('base URL used by the OAuth calls (#46)', () => {
+    const STAGING = 'https://staging.docutray.com'
+    const PRODUCTION = 'https://app.docutray.com'
+
+    beforeEach(() => {
+      // A previous `login --base-url <staging>` left its URL on disk.
+      mockReadConfig.mockReturnValue({apiKey: 'dt_live_oldstagingkey123', baseUrl: STAGING})
+    })
+
+    afterEach(() => {
+      mockReadConfig.mockReturnValue({})
+    })
+
+    function expectOAuthCallsTo(baseUrl: string) {
+      expect(mockBuildAuthorizeUrl).toHaveBeenCalledWith(54321, 'fixed-state-123', 'test-challenge', baseUrl)
+      expect(mockExchangeCodeForToken).toHaveBeenCalledWith(
+        'auth-code', 'test-verifier', 'http://localhost:54321/callback', baseUrl,
+      )
+      expect(mockFetchOrganizations).toHaveBeenCalledWith('oauth-token-123', baseUrl)
+      expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', baseUrl)
+    }
+
+    it('without --base-url goes to production, not the baseUrl left on disk, and saves no baseUrl', async () => {
+      happyPathOAuthMocks()
+      await Login.run(['--oauth', '--json'])
+
+      expectOAuthCallsTo(PRODUCTION)
+      expect(mockWriteConfig).toHaveBeenCalledTimes(1)
+      const saved = mockWriteConfig.mock.calls[0]![0]
+      expect(saved).toMatchObject({apiKey: 'dt_live_newkey123'})
+      expect(saved).not.toHaveProperty('baseUrl')
+    })
+
+    it('with --base-url uses that URL for every call and saves it', async () => {
+      happyPathOAuthMocks()
+      await Login.run(['--oauth', '--json', '--base-url', 'https://custom.example.com'])
+
+      expectOAuthCallsTo('https://custom.example.com')
+      expect(mockWriteConfig).toHaveBeenCalledWith(
+        expect.objectContaining({apiKey: 'dt_live_newkey123', baseUrl: 'https://custom.example.com'}),
+      )
+    })
+
+    it('with DOCUTRAY_BASE_URL uses it for every call and does not save it', async () => {
+      vi.stubEnv('DOCUTRAY_BASE_URL', 'https://env.example.com')
+      happyPathOAuthMocks()
+      await Login.run(['--oauth', '--json'])
+
+      expectOAuthCallsTo('https://env.example.com')
+      expect(mockWriteConfig.mock.calls[0]![0]).not.toHaveProperty('baseUrl')
+    })
+
+    it('--base-url wins over DOCUTRAY_BASE_URL', async () => {
+      vi.stubEnv('DOCUTRAY_BASE_URL', 'https://env.example.com')
+      happyPathOAuthMocks()
+      await Login.run(['--oauth', '--json', '--base-url', 'https://custom.example.com'])
+
+      expectOAuthCallsTo('https://custom.example.com')
+    })
   })
 
   it('--oauth opens browser by default', async () => {
@@ -415,7 +489,7 @@ describe('login --oauth (non-interactive OAuth)', () => {
 
     await Login.run(['--oauth', '--json'])
 
-    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', undefined)
+    expect(mockCreateApiKeyFromToken).toHaveBeenCalledWith('oauth-token-123', 'org_abc', 'https://app.docutray.com')
     const stderrOutput = stderrSpy.mock.calls.map((c) => c[0] as string).join('')
     expect(stderrOutput).toContain('Organization was not chosen in the browser; using: My Organization')
   })

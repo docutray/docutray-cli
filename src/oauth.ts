@@ -5,7 +5,7 @@ import type {AddressInfo} from 'node:net'
 import {getBaseUrl} from './config.js'
 
 const CLIENT_ID = 'docutray-cli'
-const DEFAULT_BASE_URL = 'https://app.docutray.com'
+export const DEFAULT_BASE_URL = 'https://app.docutray.com'
 // The dashboard's OAuth allowlist authorizes exactly `http://localhost:9876/callback`
 // for client_id=docutray-cli, so the redirect URI in the authorize URL must use
 // `localhost` and the callback server must bind on port 9876 by default.
