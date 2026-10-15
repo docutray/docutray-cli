@@ -101,7 +101,7 @@ The CLI resolves the API key in this order:
 
 ```bash
 # Set the env var in your CI pipeline
-export DOCUTRAY_API_KEY=dt_live_abc123
+export DOCUTRAY_API_KEY=<your-api-key>
 
 # All commands will use it automatically
 docutray convert invoice.pdf --type electronic-invoice
@@ -118,7 +118,7 @@ writes the resulting API key to `~/.config/docutray/config.json`.
 docutray login --oauth
 # stderr → "Open this URL to authorize: https://app.docutray.com/oauth/..."
 # (your browser opens; authorize there)
-# stdout ← {"message":"Login successful","apiKey":"dt_live_****…","configPath":"…"}
+# stdout ← {"message":"Login successful","apiKey":"dtQx****7aZk","organizationId":"…","organizationName":"Acme","configPath":"…"}
 
 docutray status
 # {"authenticated": true, ...}
