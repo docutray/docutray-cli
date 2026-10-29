@@ -7,6 +7,9 @@ Manage document types (extraction schemas). Document types define the fields and
 * [`docutray types export CODE`](#docutray-types-export-code)
 * [`docutray types get CODE`](#docutray-types-get-code)
 * [`docutray types list`](#docutray-types-list)
+* [`docutray types rules get CODE`](#docutray-types-rules-get-code)
+* [`docutray types rules set CODE [RULES]`](#docutray-types-rules-set-code-rules)
+* [`docutray types rules test CODE`](#docutray-types-rules-test-code)
 * [`docutray types update CODE`](#docutray-types-update-code)
 
 ## `docutray types create`
@@ -204,6 +207,128 @@ DOCUMENTATION
 ```
 
 _See code: [src/commands/types/list.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/types/list.ts)_
+
+## `docutray types rules get CODE`
+
+Get the DSL business rules of a document type. Rules are validated against the data extracted from each document, after the JSON Schema. Use --raw to print only the rules text, e.g. to save it to a file, edit it and upload it again with "types rules set".
+
+```
+USAGE
+  $ docutray types:rules:get CODE [--json | --raw]
+
+ARGUMENTS
+  CODE  Document type code
+
+FLAGS
+  --json  Output as JSON (default when piped)
+  --raw   Print only the rules text (empty when the type has no rules)
+
+DESCRIPTION
+  Get the DSL business rules of a document type. Rules are validated against the data extracted from each document,
+  after the JSON Schema. Use --raw to print only the rules text, e.g. to save it to a file, edit it and upload it again
+  with "types rules set".
+
+EXAMPLES
+  Show the rules of a document type
+
+    $ docutray types rules get invoice
+
+  Save the rules to a file
+
+    $ docutray types rules get invoice --raw > rules.dsl
+
+  Output as JSON ({codeType, dslRules})
+
+    $ docutray types rules get invoice --json
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/types/rules/get
+```
+
+_See code: [src/commands/types/rules/get.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/types/rules/get.ts)_
+
+## `docutray types rules set CODE [RULES]`
+
+Save the DSL business rules of a document type of your organization, replacing the stored ones. Public platform types cannot be modified. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.
+
+```
+USAGE
+  $ docutray types:rules:set CODE [RULES] [--clear] [--json]
+
+ARGUMENTS
+  CODE     Document type code
+  [RULES]  DSL rules: file path, "-" to read from stdin, or inline text. A value that looks like a path (no spaces, with
+           / or a .dsl/.txt extension) must exist
+
+FLAGS
+  --clear  Remove all DSL rules from the document type
+  --json   Output as JSON (default when piped)
+
+DESCRIPTION
+  Save the DSL business rules of a document type of your organization, replacing the stored ones. Public platform types
+  cannot be modified. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use
+  "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.
+
+EXAMPLES
+  Save rules from a file
+
+    $ docutray types rules set invoice rules.dsl
+
+  Save rules from stdin
+
+    cat rules.dsl | docutray types rules set invoice -
+
+  Remove all rules from the document type
+
+    $ docutray types rules set invoice --clear
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/types/rules/set
+```
+
+_See code: [src/commands/types/rules/set.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/types/rules/set.ts)_
+
+## `docutray types rules test CODE`
+
+Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exit codes: 0 when the data is valid, 1 when it is invalid, 2 on any other error (API, rules that fail to compile, invalid input), so it can gate scripts and CI.
+
+```
+USAGE
+  $ docutray types:rules:test CODE --data <value> [--json] [--rules <value>]
+
+ARGUMENTS
+  CODE  Document type code
+
+FLAGS
+  --data=<value>   (required) Document data to validate: JSON file path, inline JSON, or "-" for stdin
+  --json           Output as JSON (default when piped)
+  --rules=<value>  DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text. A value that
+                   looks like a path (no spaces, with / or a .dsl/.txt extension) must exist
+
+DESCRIPTION
+  Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the
+  stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exit codes:
+  0 when the data is valid, 1 when it is invalid, 2 on any other error (API, rules that fail to compile, invalid input),
+  so it can gate scripts and CI.
+
+EXAMPLES
+  Validate data against the stored rules
+
+    $ docutray types rules test invoice --data extracted.json
+
+  Try new rules without saving them
+
+    $ docutray types rules test invoice --data extracted.json --rules rules.dsl
+
+  Validate freshly extracted data from stdin
+
+    $ docutray convert invoice.pdf -t invoice | jq .data | docutray types rules test invoice --data -
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/types/rules/test
+```
+
+_See code: [src/commands/types/rules/test.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/types/rules/test.ts)_
 
 ## `docutray types update CODE`
 

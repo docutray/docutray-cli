@@ -18,9 +18,9 @@ import StepsRun from '../../../src/commands/steps/run.js'
 const mockCreateClient = vi.mocked(createClient)
 const mockExistsSync = vi.mocked(existsSync)
 
-function mockClient(waitResult: Record<string, unknown> = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}) {
+function mockClient(waitResult: Record<string, unknown> = {execution_id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}) {
   const mockWait = vi.fn().mockResolvedValue(waitResult)
-  const initialStatus = {id: 'exec-1', status: 'ENQUEUED', wait: mockWait}
+  const initialStatus = {id: 'exec-1', status: 'ENQUEUED', step_id: 'my-step', step_name: 'My step', wait: mockWait}
   const client = {
     steps: {
       runAsync: vi.fn().mockResolvedValue(initialStatus),
@@ -81,16 +81,15 @@ describe('steps run', () => {
     )
   })
 
-  it('passes webhook URL when provided', async () => {
+  it('warns that --webhook-url has no effect and does not send it', async () => {
     const {client} = mockClient()
 
     await StepsRun.run(['my-step', 'doc.pdf', '--webhook-url', 'https://hook.example.com'])
 
-    expect(client.steps.runAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        webhookUrl: 'https://hook.example.com',
-      }),
+    expect(stderrSpy).toHaveBeenCalledWith(
+      JSON.stringify({warning: '--webhook-url has no effect and will be removed; webhooks are configured per organization'}) + '\n',
     )
+    expect(client.steps.runAsync).toHaveBeenCalledWith(expect.not.objectContaining({webhookUrl: expect.anything()}))
   })
 
   it('returns immediately with --no-wait', async () => {
@@ -123,13 +122,13 @@ describe('steps run', () => {
   })
 
   it('emits status updates to stderr during polling', async () => {
-    const waitResult = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}
+    const waitResult = {execution_id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}
     const mockWait = vi.fn().mockImplementation(async (options: {onStatus: (s: {status: string}) => void}) => {
       options.onStatus({status: 'PROCESSING'})
       options.onStatus({status: 'PROCESSING'})
       return waitResult
     })
-    const initialStatus = {id: 'exec-1', status: 'ENQUEUED', wait: mockWait}
+    const initialStatus = {id: 'exec-1', status: 'ENQUEUED', step_id: 'my-step', step_name: 'My step', wait: mockWait}
     mockCreateClient.mockReturnValue({
       steps: {runAsync: vi.fn().mockResolvedValue(initialStatus)},
     } as any)
@@ -170,17 +169,6 @@ describe('steps run', () => {
 
     await expect(StepsRun.run(['my-step', 'doc.pdf', '--metadata', 'not-json'])).rejects.toThrow('EXIT')
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid JSON in --metadata'))
-    exitSpy.mockRestore()
-  })
-
-  it('rejects invalid --webhook-url', async () => {
-    mockClient()
-    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
-      throw new Error('EXIT')
-    })
-
-    await expect(StepsRun.run(['my-step', 'doc.pdf', '--webhook-url', 'not-a-url'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid URL in --webhook-url'))
     exitSpy.mockRestore()
   })
 

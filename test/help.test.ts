@@ -87,7 +87,7 @@ describe('help output', () => {
       stdoutData = ''
       await help.showCommandHelp(cmd)
 
-      const expectedUrl = `https://docs.docutray.com/cli/${cmd.id.replaceAll(':', '/')}`
+      const expectedUrl = `https://docs.docutray.com/cli/${cmd.id.replaceAll(':', '/').replaceAll(' ', '/')}`
       expect(stdoutData, `Command "${cmd.id}" missing Learn more link`).toContain(expectedUrl)
     }
   })

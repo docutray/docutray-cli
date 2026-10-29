@@ -1,3 +1,4 @@
+import {mockPage} from '../../helpers/page.js'
 import {describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../../../src/client.js', () => ({
@@ -29,9 +30,7 @@ const mockResult = {
 function mockClient() {
   const client = {
     documentTypes: {
-      list: vi.fn().mockResolvedValue({
-        data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
-      }),
+      list: vi.fn().mockResolvedValue(mockPage([{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}])),
       update: vi.fn().mockResolvedValue(mockResult),
     },
   }

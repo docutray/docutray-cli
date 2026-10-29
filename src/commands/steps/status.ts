@@ -31,10 +31,10 @@ export default class StepsStatus extends BaseCommand {
 
       const r = result as unknown as Record<string, unknown>
       outputKeyValue(result, [
-        {key: 'Execution ID', value: String(r.id || args['execution-id'])},
+        {key: 'Execution ID', value: result.execution_id || args['execution-id']},
         {key: 'Status', value: String(result.status), icon: result.status === 'ERROR' ? '\u2717' : '\u25cb'},
         ...(r.progress !== undefined ? [{key: 'Progress', value: `${r.progress}%`}] : []),
-        ...(r.error ? [{key: 'Error', value: String(r.error)}] : []),
+        ...(result.error ? [{key: 'Error', value: result.error.message}] : []),
       ])
     } catch (error) {
       outputError(error)

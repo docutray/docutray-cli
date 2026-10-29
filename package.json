@@ -56,13 +56,16 @@
       },
       "types": {
         "description": "Manage document types (extraction schemas). Document types define the fields and structure that DocuTray extracts from documents during conversion."
+      },
+      "types:rules": {
+        "description": "Read, save and test the DSL business rules of a document type. Rules are validated against the extracted data after the JSON Schema, and the result appears as validation in convert output."
       }
     }
   },
   "dependencies": {
     "@oclif/core": "^4",
     "@oclif/plugin-autocomplete": "^3.2.45",
-    "docutray": "^0.1.5",
+    "docutray": "^0.2.0",
     "open": "^11.0.0"
   },
   "devDependencies": {

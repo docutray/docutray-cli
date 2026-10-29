@@ -19,14 +19,14 @@ const mockExistsSync = vi.mocked(existsSync)
 const mockStatSync = vi.mocked(statSync)
 
 function mockClient() {
-  const mockWait = vi.fn().mockResolvedValue({id: 'conv-1', status: 'SUCCESS'})
+  const mockWait = vi.fn().mockResolvedValue({conversion_id: 'conv_abc123', status: 'SUCCESS', data: {}, validation: null})
   const client = {
     convert: {
-      run: vi.fn().mockResolvedValue({id: 'conv-1', status: 'SUCCESS'}),
+      run: vi.fn().mockResolvedValue({data: {}, validation: null}),
       runAsync: vi.fn().mockResolvedValue({
         conversion_id: 'conv_abc123',
-        id: 'conv-1',
         status: 'ENQUEUED',
+        status_url: '/api/convert-async/status/conv_abc123',
         wait: mockWait,
       }),
     },
@@ -58,18 +58,20 @@ describe('convert validation', () => {
     exitSpy.mockRestore()
   })
 
-  it('rejects invalid --webhook-url', async () => {
-    mockClient()
-    await expect(Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'not-a-url'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid URL in --webhook-url'))
-    exitSpy.mockRestore()
+  it('warns that --webhook-url has no effect and does not send it', async () => {
+    const client = mockClient()
+    await Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'https://example.com/hook'])
+    expect(stderrSpy).toHaveBeenCalledWith(
+      JSON.stringify({warning: '--webhook-url has no effect and will be removed; webhooks are configured per organization'}) + '\n',
+    )
+    expect(client.convert.run).toHaveBeenCalledWith(expect.not.objectContaining({webhookUrl: expect.anything()}))
   })
 
-  it('rejects non-http protocol in --webhook-url', async () => {
+  it('does not warn when --webhook-url is omitted', async () => {
     mockClient()
-    await expect(Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'ftp://example.com'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('must use http or https protocol'))
-    exitSpy.mockRestore()
+    await Convert.run(['file.pdf', '-t', 'inv'])
+    const stderr = stderrSpy.mock.calls.map((c: any) => c[0]).join('')
+    expect(stderr).not.toContain('webhook-url')
   })
 
   it('rejects nonexistent source file', async () => {
@@ -142,7 +144,7 @@ describe('convert --async', () => {
 
     await expect(Convert.run(['file.pdf', '-t', 'inv', '--async', '--json'])).rejects.toThrow('EXIT')
     expect(stderrSpy).toHaveBeenCalledWith(
-      expect.stringContaining('conv_abc123'),
+      expect.stringContaining('docutray convert status conv_abc123'),
     )
     exitSpy.mockRestore()
   })
@@ -181,11 +183,48 @@ describe('convert --async', () => {
     exitSpy.mockRestore()
   })
 
+  it('keeps validation inside the JSON when piped', async () => {
+    const client = mockClient()
+    const validation = {valid: true, errors: [], warnings: []}
+    client.convert.run.mockResolvedValue({data: {total: 1}, validation})
+
+    await Convert.run(['file.pdf', '-t', 'inv'])
+
+    const output = JSON.parse(stdoutSpy.mock.calls.map((c: any) => c[0]).join(''))
+    expect(output).toEqual({data: {total: 1}, validation})
+  })
+
+  it('shows the validation as a block after the result in a TTY', async () => {
+    const original = process.stdout.isTTY
+    Object.defineProperty(process.stdout, 'isTTY', {value: true, writable: true})
+    try {
+      const client = mockClient()
+      client.convert.run.mockResolvedValue({
+        data: {total: 1},
+        validation: {
+          valid: false,
+          errors: [{field: 'total', code: 'VALIDATION_ERROR', message: 'total muy bajo', severity: 'error', source: 'rule', rule: 'min_total'}],
+          warnings: [],
+        },
+      })
+
+      await Convert.run(['file.pdf', '-t', 'inv'])
+
+      const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+      expect(output).toContain('"total": 1')
+      expect(output).not.toContain('"validation"')
+      expect(output).toContain('Validation:  \u2717 invalid (1 error, 0 warnings)')
+      expect(output).toContain('\u2717 total: total muy bajo [VALIDATION_ERROR, rule: min_total]')
+    } finally {
+      Object.defineProperty(process.stdout, 'isTTY', {value: original, writable: true})
+    }
+  })
+
   it('includes conversion_id in JSON status output', async () => {
     const client = mockClient()
     client.mockWait.mockImplementation(async (opts: any) => {
       opts.onStatus({status: 'PROCESSING'})
-      return {id: 'conv-1', status: 'SUCCESS'}
+      return {conversion_id: 'conv_abc123', status: 'SUCCESS', data: {}, validation: null}
     })
 
     await Convert.run(['file.pdf', '-t', 'inv', '--async', '--json'])

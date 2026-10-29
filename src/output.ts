@@ -40,6 +40,11 @@ export function outputError(error: unknown): void {
   const statusCode = isApiError ? (error as Record<string, unknown>).statusCode as number : undefined
   const body = isApiError ? (error as Record<string, unknown>).body as Record<string, unknown> : undefined
   const requestId = isApiError ? (error as Record<string, unknown>).requestId as string | undefined : undefined
+  // DSLValidationError from the SDK: rules that failed to compile
+  const rawDiagnostics = error instanceof Error ? (error as unknown as Record<string, unknown>).diagnostics : undefined
+  const diagnostics = Array.isArray(rawDiagnostics) && rawDiagnostics.length > 0
+    ? rawDiagnostics as Array<{column: number; line: number; message: string}>
+    : undefined
 
   // Extract detailed message from body.error or body.message, falling back to error.message
   const detailMessage =
@@ -52,6 +57,9 @@ export function outputError(error: unknown): void {
   if (isStderrInteractive()) {
     const suffix = statusCode !== undefined ? ` (${statusCode})` : ''
     process.stderr.write(`\u2717 Error: ${detailMessage}${suffix}\n`)
+    for (const d of diagnostics ?? []) {
+      process.stderr.write(`  line ${d.line}, column ${d.column}: ${d.message}\n`)
+    }
   } else {
     const output: Record<string, unknown> = {error: detailMessage}
     if (statusCode !== undefined) {
@@ -62,7 +70,19 @@ export function outputError(error: unknown): void {
       output.requestId = requestId
     }
 
+    if (diagnostics) {
+      output.diagnostics = diagnostics
+    }
+
     process.stderr.write(JSON.stringify(output, null, 2) + '\n')
+  }
+}
+
+export function outputWarning(message: string): void {
+  if (isStderrInteractive()) {
+    process.stderr.write(`\u26a0 Warning: ${message}\n`)
+  } else {
+    process.stderr.write(JSON.stringify({warning: message}) + '\n')
   }
 }
 

@@ -35,13 +35,17 @@ docutray convert large-document.pdf --type electronic-invoice --async
 # Final result is written to stdout
 ```
 
-### Webhooks
-
-Instead of polling, you can receive a notification when processing completes:
+If polling times out, the conversion keeps running on the server. Check it later with its conversion ID:
 
 ```bash
-docutray convert invoice.pdf --type electronic-invoice --webhook-url https://example.com/hooks/docutray
+docutray convert status conv_abc123
 ```
+
+### Webhooks
+
+Instead of polling, you can receive a notification when processing completes. Webhooks are configured per organization in DocuTray, not per request.
+
+> `--webhook-url` on `convert` and `steps run` is deprecated and has no effect: the API never read it. Passing it prints a warning on stderr, and it will be removed in the next minor release.
 
 ### Attaching metadata
 
@@ -55,7 +59,7 @@ Metadata is stored with the conversion result and included in webhook payloads.
 
 ## Identifying documents
 
-The `identify` command analyzes a document and returns the best-matching document type with a confidence score.
+The `identify` command analyzes a document and returns the best-matching document type with a confidence score. By default it considers all document types of your organization, drafts included. Public platform types are only considered when you name them with `--types`, and with a platform (admin) API key you must always pass `--types`.
 
 ```bash
 docutray identify document.pdf
@@ -82,7 +86,7 @@ Output:
 
 ### Restricting to specific types
 
-Narrow identification to a known set of document types:
+Narrow identification to a known set of document types (skips listing the organization's types):
 
 ```bash
 docutray identify document.pdf --types invoice,receipt,contract

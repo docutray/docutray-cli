@@ -287,6 +287,76 @@ Unlike `types create`, `types update --schema` ignores a `conversionSpec`
 embedded in a `types export` payload — an update only touches the fields you
 name. Use `--conversion-spec` to change it.
 
+## Validation rules (DSL)
+
+Besides its JSON Schema, a document type can have business rules written in the
+DocuTray validation DSL: one rule per line, `#` for comments. Both layers run on
+the data extracted by every conversion, and the result appears as `validation` in
+the output of `convert` and `convert status`. Validation is informational: an
+invalid document still converts with status `SUCCESS`.
+
+```txt
+# rules.dsl
+field.total greaterThan 0
+field.currency in("CLP", "USD")
+define expected sum field.subtotal field.tax
+field.total equalsWithPrecision(calculated.expected, 2)
+```
+
+### Reading the rules
+
+```bash
+docutray types rules get invoice              # print the rules (TTY) or {codeType, dslRules} (piped)
+docutray types rules get invoice --raw > rules.dsl  # save only the rules text
+```
+
+### Testing rules without saving them
+
+`types rules test` validates data against the JSON Schema and the rules. With
+`--rules` it uses the given rules instead of the stored ones (dry-run). Exit
+codes, so it can gate scripts and CI:
+
+| Code | Meaning |
+|---|---|
+| 0 | The data is valid (warnings do not make it invalid) |
+| 1 | The data is invalid |
+| 2 | Any other error: API, rules that fail to compile, invalid input |
+
+```bash
+# Against the stored rules
+docutray types rules test invoice --data extracted.json
+
+# Try new rules before saving them
+docutray types rules test invoice --data extracted.json --rules rules.dsl
+
+# Data straight from a conversion
+docutray convert invoice.pdf -t invoice | jq .data | docutray types rules test invoice --data -
+```
+
+Piped output is the API response: `valid`, `issues` (each with `field`, `code`,
+`message`, `severity` and `source`) and the `errors`/`warnings` summaries. Issue
+messages are written in Spanish by the API.
+
+### Saving the rules
+
+```bash
+docutray types rules set invoice rules.dsl    # from a file
+cat rules.dsl | docutray types rules set invoice -   # from stdin
+docutray types rules set invoice --clear      # remove all rules
+```
+
+Saving replaces the stored rules. Only your organization's document types can be modified: `set` on a public platform type fails with 403 or 404. Rules that fail to compile are rejected and
+nothing is saved; the error lists the line and column of each problem
+(`diagnostics` in piped output):
+
+```json
+{
+  "error": "<message from the API>",
+  "status": 400,
+  "diagnostics": [{"line": 2, "column": 7, "message": "..."}]
+}
+```
+
 ## Common workflows
 
 ### Find the right type for a document

@@ -10,25 +10,25 @@ export async function resolveDocumentTypeId(client: DocuTray, identifier: string
     return identifier
   }
 
-  const limit = 100
-  let page = 1
-
-  while (true) {
-    const result = await client.documentTypes.list({search: identifier, page, limit})
-    const match = result.data.find(
-      (dt: {codeType: string; id: string}) => dt.codeType === identifier,
-    )
-
-    if (match) {
-      return match.id
-    }
-
-    if (result.data.length < limit) {
-      break
-    }
-
-    page += 1
+  const page = await client.documentTypes.list({search: identifier, limit: 100})
+  for await (const dt of page.autoPagingIter()) {
+    if (dt.codeType === identifier) return dt.id
   }
 
   throw new Error(`Document type "${identifier}" not found`)
+}
+
+/**
+ * Returns the codeType of every document type of the organization, walking all
+ * pages of the list endpoint. The endpoint also returns the platform's public
+ * types, which are left out: they are only considered when named explicitly.
+ */
+export async function listOrganizationDocumentTypeCodes(client: DocuTray): Promise<string[]> {
+  const codes: string[] = []
+  const page = await client.documentTypes.list({limit: 100})
+  for await (const dt of page.autoPagingIter()) {
+    if (dt.isPublic === false) codes.push(dt.codeType)
+  }
+
+  return codes
 }

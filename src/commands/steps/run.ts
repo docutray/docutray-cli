@@ -5,8 +5,8 @@ import {basename} from 'node:path'
 
 import {BaseCommand} from '../../base-command.js'
 import {createClient} from '../../client.js'
-import {isStderrInteractive, outputError, outputJson, setForceJson} from '../../output.js'
-import {parseJsonFlag, validateSource, validateUrl} from '../../validators.js'
+import {isStderrInteractive, outputError, outputJson, outputWarning, setForceJson} from '../../output.js'
+import {parseJsonFlag, validateSource} from '../../validators.js'
 
 export default class StepsRun extends BaseCommand {
   static args = {
@@ -21,14 +21,14 @@ export default class StepsRun extends BaseCommand {
     {command: '<%= config.bin %> steps run extract-fields https://example.com/doc.pdf', description: 'Run a step on a document URL'},
     {command: '<%= config.bin %> steps run extract-fields invoice.pdf --no-wait', description: 'Start execution and return immediately (async)'},
     {command: '<%= config.bin %> steps run extract-fields invoice.pdf --metadata \'{"ref":"order-123"}\'', description: 'Attach custom metadata to the execution'},
-    {command: '<%= config.bin %> steps run extract-fields invoice.pdf --webhook-url https://example.com/hook', description: 'Receive a webhook notification on completion'},
   ]
 
   static flags = {
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     metadata: Flags.string({description: 'JSON metadata to attach to the execution (e.g. \'{"key":"value"}\')'}),
     'no-wait': Flags.boolean({default: false, description: 'Return immediately with execution status instead of waiting for completion (default: false)'}),
-    'webhook-url': Flags.string({description: 'Webhook URL to receive a POST notification when the step completes'}),
+    // Deprecated: the API never read it. Remove in the next minor release.
+    'webhook-url': Flags.string({description: 'Deprecated, has no effect: webhooks are configured per organization', hidden: true}),
   }
 
   async run(): Promise<void> {
@@ -39,9 +39,12 @@ export default class StepsRun extends BaseCommand {
       const client = createClient()
       const {isUrl} = validateSource(args.source)
 
+      if (flags['webhook-url'] !== undefined) {
+        outputWarning('--webhook-url has no effect and will be removed; webhooks are configured per organization')
+      }
+
       const params: StepsRunParams = {
         stepId: args['step-id'],
-        ...(flags['webhook-url'] && {webhookUrl: validateUrl(flags['webhook-url'], '--webhook-url')}),
         ...(flags.metadata && {documentMetadata: parseJsonFlag(flags.metadata, '--metadata')}),
         ...(isUrl
           ? {url: args.source}

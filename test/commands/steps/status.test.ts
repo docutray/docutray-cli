@@ -1,4 +1,4 @@
-import {describe, expect, it, vi, beforeEach} from 'vitest'
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('../../../src/client.js', () => ({
   createClient: vi.fn(),
@@ -20,7 +20,7 @@ describe('steps status', () => {
   })
 
   it('queries execution status and outputs JSON', async () => {
-    const statusResult = {id: 'exec-1', status: 'SUCCESS', data: {extracted: true}}
+    const statusResult = {execution_id: 'exec-1', status: 'SUCCESS', data: {extracted: true}}
     mockCreateClient.mockReturnValue({
       steps: {getStatus: vi.fn().mockResolvedValue(statusResult)},
     } as any)
@@ -30,6 +30,48 @@ describe('steps status', () => {
     expect(stdoutSpy).toHaveBeenCalledWith(
       expect.stringContaining('"status": "SUCCESS"'),
     )
+  })
+
+  describe('in a TTY', () => {
+    let originalStdoutTTY: boolean | undefined
+
+    beforeEach(() => {
+      originalStdoutTTY = process.stdout.isTTY
+      Object.defineProperty(process.stdout, 'isTTY', {value: true, writable: true})
+    })
+
+    afterEach(() => {
+      Object.defineProperty(process.stdout, 'isTTY', {value: originalStdoutTTY, writable: true})
+    })
+
+    it('shows the execution_id returned by the API', async () => {
+      mockCreateClient.mockReturnValue({
+        steps: {getStatus: vi.fn().mockResolvedValue({execution_id: 'exec-from-api', status: 'SUCCESS'})},
+      } as any)
+
+      await StepsStatus.run(['exec-1'])
+
+      const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+      expect(output).toContain('Execution ID:  exec-from-api')
+    })
+
+    it('shows the error message of a failed execution', async () => {
+      mockCreateClient.mockReturnValue({
+        steps: {
+          getStatus: vi.fn().mockResolvedValue({
+            execution_id: 'exec-1',
+            status: 'ERROR',
+            error: {message: 'Extraction failed', phase: 'conversion'},
+          }),
+        },
+      } as any)
+
+      await StepsStatus.run(['exec-1'])
+
+      const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+      expect(output).toContain('Error:  Extraction failed')
+      expect(output).not.toContain('[object Object]')
+    })
   })
 
   it('outputs error when no API key is configured', async () => {

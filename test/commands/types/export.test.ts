@@ -1,3 +1,4 @@
+import {mockPage} from '../../helpers/page.js'
 import {describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../../../src/client.js', () => ({
@@ -36,9 +37,7 @@ function mockClient() {
         name: 'Invoice',
         status: 'PUBLISHED',
       }),
-      list: vi.fn().mockResolvedValue({
-        data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
-      }),
+      list: vi.fn().mockResolvedValue(mockPage([{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}])),
     },
   }
   mockCreateClient.mockReturnValue(client as never)
@@ -63,7 +62,7 @@ describe('types export --force', () => {
   it('resolves codeType to id before calling get', async () => {
     const client = mockClient()
     await TypesExport.run(['invoice'])
-    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', page: 1, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', limit: 100})
     expect(client.documentTypes.get).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl')
   })
 
