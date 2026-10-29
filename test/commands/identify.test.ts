@@ -1,3 +1,4 @@
+import {mockPage} from '../helpers/page.js'
 import {describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../../src/client.js', () => ({
@@ -20,7 +21,7 @@ const mockExistsSync = vi.mocked(existsSync)
 function mockClient(typeCodes: string[] = ['invoice', 'receipt']) {
   const client = {
     documentTypes: {
-      list: vi.fn().mockResolvedValue({data: typeCodes.map((codeType) => ({codeType, isPublic: false}))}),
+      list: vi.fn().mockResolvedValue(mockPage(typeCodes.map((codeType) => ({codeType, isPublic: false})))),
     },
     identify: {
       run: vi.fn().mockResolvedValue({document_type: {code: 'invoice', name: 'Invoice', confidence: 0.95}}),
@@ -63,7 +64,7 @@ describe('identify validation', () => {
   it('uses all document types of the organization when --types is omitted', async () => {
     const client = mockClient(['invoice', 'receipt'])
     await Identify.run(['https://example.com/doc.pdf'])
-    expect(client.documentTypes.list).toHaveBeenCalledWith({page: 1, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledWith({limit: 100})
     expect(client.identify.run).toHaveBeenCalledWith(
       expect.objectContaining({documentTypeCodeOptions: ['invoice', 'receipt']}),
     )
@@ -71,29 +72,27 @@ describe('identify validation', () => {
 
   it('walks every page of document types', async () => {
     const client = mockClient()
-    const firstPage = Array.from({length: 100}, (_, i) => ({codeType: `type-${i}`, isPublic: false}))
-    client.documentTypes.list
-      .mockResolvedValueOnce({data: firstPage})
-      .mockResolvedValueOnce({data: [{codeType: 'last', isPublic: false}]})
+    client.documentTypes.list.mockResolvedValue(mockPage(
+      [{codeType: 'first', isPublic: false}],
+      [[{codeType: 'last', isPublic: false}]],
+    ))
 
     await Identify.run(['https://example.com/doc.pdf'])
 
-    expect(client.documentTypes.list).toHaveBeenCalledTimes(2)
-    expect(client.documentTypes.list).toHaveBeenLastCalledWith({page: 2, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledTimes(1)
+    expect(client.documentTypes.list).toHaveBeenLastCalledWith({limit: 100})
     const options = client.identify.run.mock.calls[0]![0].documentTypeCodeOptions
-    expect(options).toHaveLength(101)
+    expect(options).toEqual(['first', 'last'])
     expect(options.at(-1)).toBe('last')
   })
 
   it('leaves out public platform types returned by the list', async () => {
     const client = mockClient()
-    client.documentTypes.list.mockResolvedValue({
-      data: [
+    client.documentTypes.list.mockResolvedValue(mockPage([
         {codeType: 'invoice', isPublic: false},
         {codeType: 'platform-receipt', isPublic: true},
         {codeType: 'draft-contract', isDraft: true, isPublic: false},
-      ],
-    })
+      ]))
 
     await Identify.run(['https://example.com/doc.pdf'])
 
@@ -104,7 +103,7 @@ describe('identify validation', () => {
 
   it('fails when the list only has public types', async () => {
     const client = mockClient()
-    client.documentTypes.list.mockResolvedValue({data: [{codeType: 'platform-receipt', isPublic: true}]})
+    client.documentTypes.list.mockResolvedValue(mockPage([{codeType: 'platform-receipt', isPublic: true}]))
 
     await expect(Identify.run(['https://example.com/doc.pdf'])).rejects.toThrow('EXIT')
 

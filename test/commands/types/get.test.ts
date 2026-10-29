@@ -1,3 +1,4 @@
+import {mockPage} from '../../helpers/page.js'
 import {describe, expect, it, vi, beforeEach} from 'vitest'
 
 vi.mock('../../../src/client.js', () => ({
@@ -33,9 +34,7 @@ function mockClient(overrides: Record<string, unknown> = {}) {
         updatedAt: '2026-01-02T00:00:00.000Z',
         ...overrides,
       }),
-      list: vi.fn().mockResolvedValue({
-        data: [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}],
-      }),
+      list: vi.fn().mockResolvedValue(mockPage([{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl', name: 'Invoice'}])),
     },
   }
   mockCreateClient.mockReturnValue(client as never)
@@ -61,7 +60,7 @@ describe('types get', () => {
 
     await TypesGet.run(['invoice'])
 
-    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', page: 1, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', limit: 100})
     expect(client.documentTypes.get).toHaveBeenCalledWith('cmnp1nxdb004s01tm5gxakfdl')
   })
 
@@ -205,7 +204,7 @@ describe('types get', () => {
 
   it('shows error when codeType not found', async () => {
     const client = mockClient()
-    client.documentTypes.list.mockResolvedValue({data: []})
+    client.documentTypes.list.mockResolvedValue(mockPage([]))
 
     await expect(TypesGet.run(['nonexistent'])).rejects.toThrow('EXIT')
     const stderrOutput = stderrSpy.mock.calls.map(([msg]) => msg).join('')

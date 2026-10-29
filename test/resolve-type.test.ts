@@ -1,3 +1,4 @@
+import {mockPage} from './helpers/page.js'
 import {describe, expect, it, vi} from 'vitest'
 
 import {resolveDocumentTypeId} from '../src/resolve-type.js'
@@ -5,7 +6,7 @@ import {resolveDocumentTypeId} from '../src/resolve-type.js'
 function mockClient(data: Array<{codeType: string; id: string}> = []) {
   return {
     documentTypes: {
-      list: vi.fn().mockResolvedValue({data}),
+      list: vi.fn().mockResolvedValue(mockPage(data)),
     },
   } as any
 }
@@ -28,7 +29,7 @@ describe('resolveDocumentTypeId', () => {
     const id = await resolveDocumentTypeId(client, 'invoice')
 
     expect(id).toBe('cmnp1nxdb004s01tm5gxakfdl')
-    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', page: 1, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', limit: 100})
   })
 
   it('uses exact match when multiple results exist', async () => {
@@ -51,25 +52,17 @@ describe('resolveDocumentTypeId', () => {
   })
 
   it('paginates to find match on a later page', async () => {
-    const firstPage = Array.from({length: 100}, (_, i) => ({
-      codeType: `type-${i}`,
-      id: `id-${i}-000000000000000000000`,
-    }))
-    const secondPage = [{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl'}]
-
-    const client = {
-      documentTypes: {
-        list: vi.fn()
-          .mockResolvedValueOnce({data: firstPage})
-          .mockResolvedValueOnce({data: secondPage}),
-      },
-    } as any
+    const client = mockClient()
+    client.documentTypes.list.mockResolvedValue(mockPage(
+      [{codeType: 'invoice-v2', id: 'other'}],
+      [[{codeType: 'invoice', id: 'cmnp1nxdb004s01tm5gxakfdl'}]],
+    ))
 
     const id = await resolveDocumentTypeId(client, 'invoice')
 
     expect(id).toBe('cmnp1nxdb004s01tm5gxakfdl')
-    expect(client.documentTypes.list).toHaveBeenCalledTimes(2)
-    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', page: 2, limit: 100})
+    expect(client.documentTypes.list).toHaveBeenCalledTimes(1)
+    expect(client.documentTypes.list).toHaveBeenCalledWith({search: 'invoice', limit: 100})
   })
 
   it('throws when no exact match exists among results', async () => {

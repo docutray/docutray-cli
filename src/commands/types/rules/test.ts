@@ -42,6 +42,8 @@ export default class TypesRulesTest extends BaseCommand {
       const data = readDataInput(flags.data)
       const params = flags.rules === undefined ? undefined : {dslRules: readRulesInput(flags.rules)}
 
+      if (params?.dslRules.trim() === '') throw new Error('The rules are empty. Omit --rules to use the stored rules.')
+
       const client = createClient()
       const id = await resolveDocumentTypeId(client, args.code)
       const result = await client.documentTypes.validate(id, data, params)

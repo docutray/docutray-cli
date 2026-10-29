@@ -1,8 +1,13 @@
-import {mkdtempSync, rmSync, writeFileSync} from 'node:fs'
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {DSLValidationError} from 'docutray'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
+
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>()
+  return {...actual, readFileSync: vi.fn(actual.readFileSync)}
+})
 
 vi.mock('../../../../src/client.js', () => ({
   createClient: vi.fn(),
@@ -71,6 +76,41 @@ describe('types rules test', () => {
 
     expect(client.documentTypes.validate).toHaveBeenCalledWith(TYPE_ID, {total: 5}, {dslRules: 'field.total greaterThan 1000'})
     expect(client.documentTypes.update).not.toHaveBeenCalled()
+  })
+
+  it.each(['', ' \n\t'])('rejects empty inline rules %j before calling the API', async (rules) => {
+    const client = rulesClient()
+    mockCreateClient.mockReturnValue(client as never)
+
+    await expect(TypesRulesTest.run(['invoice', '--data', '{}', '--rules', rules])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('The rules are empty'))
+    expect(exitSpy).toHaveBeenCalledWith(2)
+    expect(mockCreateClient).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty rules file before calling the API', async () => {
+    const rules = join(dir, 'empty.dsl')
+    writeFileSync(rules, '')
+
+    await expect(TypesRulesTest.run(['invoice', '--data', '{}', '--rules', rules])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('The rules are empty'))
+    expect(exitSpy).toHaveBeenCalledWith(2)
+    expect(mockCreateClient).not.toHaveBeenCalled()
+  })
+
+  it('rejects empty rules from stdin before calling the API', async () => {
+    const read = vi.mocked(readFileSync).mockReturnValueOnce('')
+    try {
+      await expect(TypesRulesTest.run(['invoice', '--data', '{}', '--rules', '-'])).rejects.toThrow('EXIT')
+      expect(read).toHaveBeenCalledWith(0, 'utf8')
+      expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('The rules are empty'))
+      expect(exitSpy).toHaveBeenCalledWith(2)
+      expect(mockCreateClient).not.toHaveBeenCalled()
+    } finally {
+      read.mockClear()
+    }
   })
 
   it('outputs the result and exits 1 when the data is invalid', async () => {

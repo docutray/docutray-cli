@@ -1,3 +1,4 @@
+import {mockPage} from '../../../helpers/page.js'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('../../../../src/client.js', () => ({
@@ -54,7 +55,7 @@ describe('types rules get', () => {
 
   it('outputs error when the document type does not exist', async () => {
     const client = rulesClient()
-    client.documentTypes.list.mockResolvedValue({data: []})
+    client.documentTypes.list.mockResolvedValue(mockPage([]))
     mockCreateClient.mockReturnValue(client as never)
     const exitSpy = vi.spyOn(TypesRulesGet.prototype, 'exit').mockImplementation(() => {
       throw new Error('EXIT')
