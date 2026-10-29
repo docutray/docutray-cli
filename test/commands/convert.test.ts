@@ -19,14 +19,14 @@ const mockExistsSync = vi.mocked(existsSync)
 const mockStatSync = vi.mocked(statSync)
 
 function mockClient() {
-  const mockWait = vi.fn().mockResolvedValue({id: 'conv-1', status: 'SUCCESS'})
+  const mockWait = vi.fn().mockResolvedValue({conversion_id: 'conv_abc123', status: 'SUCCESS', data: {}, validation: null})
   const client = {
     convert: {
-      run: vi.fn().mockResolvedValue({id: 'conv-1', status: 'SUCCESS'}),
+      run: vi.fn().mockResolvedValue({data: {}, validation: null}),
       runAsync: vi.fn().mockResolvedValue({
         conversion_id: 'conv_abc123',
-        id: 'conv-1',
         status: 'ENQUEUED',
+        status_url: '/api/convert-async/status/conv_abc123',
         wait: mockWait,
       }),
     },
@@ -185,7 +185,7 @@ describe('convert --async', () => {
     const client = mockClient()
     client.mockWait.mockImplementation(async (opts: any) => {
       opts.onStatus({status: 'PROCESSING'})
-      return {id: 'conv-1', status: 'SUCCESS'}
+      return {conversion_id: 'conv_abc123', status: 'SUCCESS', data: {}, validation: null}
     })
 
     await Convert.run(['file.pdf', '-t', 'inv', '--async', '--json'])

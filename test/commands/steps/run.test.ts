@@ -18,9 +18,9 @@ import StepsRun from '../../../src/commands/steps/run.js'
 const mockCreateClient = vi.mocked(createClient)
 const mockExistsSync = vi.mocked(existsSync)
 
-function mockClient(waitResult: Record<string, unknown> = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}) {
+function mockClient(waitResult: Record<string, unknown> = {execution_id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}) {
   const mockWait = vi.fn().mockResolvedValue(waitResult)
-  const initialStatus = {id: 'exec-1', status: 'ENQUEUED', wait: mockWait}
+  const initialStatus = {id: 'exec-1', status: 'ENQUEUED', step_id: 'my-step', step_name: 'My step', wait: mockWait}
   const client = {
     steps: {
       runAsync: vi.fn().mockResolvedValue(initialStatus),
@@ -123,13 +123,13 @@ describe('steps run', () => {
   })
 
   it('emits status updates to stderr during polling', async () => {
-    const waitResult = {id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}
+    const waitResult = {execution_id: 'exec-1', status: 'SUCCESS', data: {key: 'value'}}
     const mockWait = vi.fn().mockImplementation(async (options: {onStatus: (s: {status: string}) => void}) => {
       options.onStatus({status: 'PROCESSING'})
       options.onStatus({status: 'PROCESSING'})
       return waitResult
     })
-    const initialStatus = {id: 'exec-1', status: 'ENQUEUED', wait: mockWait}
+    const initialStatus = {id: 'exec-1', status: 'ENQUEUED', step_id: 'my-step', step_name: 'My step', wait: mockWait}
     mockCreateClient.mockReturnValue({
       steps: {runAsync: vi.fn().mockResolvedValue(initialStatus)},
     } as any)

@@ -38,7 +38,7 @@ export default class Identify extends BaseCommand {
       const {isUrl} = validateSource(args.source)
 
       const params: IdentifyParams = {
-        ...(flags.types && {documentTypeCodeOptions: flags.types.split(',').map((t) => t.trim())}),
+        documentTypeCodeOptions: flags.types ? flags.types.split(',').map((t) => t.trim()) : [],
         ...(isUrl
           ? {url: args.source}
           : {file: readFileSync(args.source), filename: basename(args.source)}),
