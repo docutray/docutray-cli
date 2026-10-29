@@ -34,17 +34,18 @@ export async function resolveDocumentTypeId(client: DocuTray, identifier: string
 }
 
 /**
- * Returns the codeType of every document type visible to the organization,
- * walking all pages of the list endpoint.
+ * Returns the codeType of every document type of the organization, walking all
+ * pages of the list endpoint. The endpoint also returns the platform's public
+ * types, which are left out: they are only considered when named explicitly.
  */
-export async function listAllDocumentTypeCodes(client: DocuTray): Promise<string[]> {
+export async function listOrganizationDocumentTypeCodes(client: DocuTray): Promise<string[]> {
   const limit = 100
   const codes: string[] = []
   let page = 1
 
   while (true) {
     const result = await client.documentTypes.list({page, limit})
-    codes.push(...result.data.map((dt: {codeType: string}) => dt.codeType))
+    codes.push(...result.data.filter((dt) => dt.isPublic === false).map((dt) => dt.codeType))
 
     if (result.data.length < limit) {
       break

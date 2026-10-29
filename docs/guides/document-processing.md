@@ -59,7 +59,7 @@ Metadata is stored with the conversion result and included in webhook payloads.
 
 ## Identifying documents
 
-The `identify` command analyzes a document and returns the best-matching document type with a confidence score. By default it considers all document types of your organization.
+The `identify` command analyzes a document and returns the best-matching document type with a confidence score. By default it considers all document types of your organization, drafts included. Public platform types are only considered when you name them with `--types`, and with a platform (admin) API key you must always pass `--types`.
 
 ```bash
 docutray identify document.pdf
