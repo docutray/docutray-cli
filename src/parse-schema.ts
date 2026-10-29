@@ -7,7 +7,7 @@ import {existsSync, readFileSync} from 'node:fs'
  * string. `label` is woven into the error messages so the user knows which
  * flag was at fault.
  */
-function loadJson(input: string, label: string): unknown {
+export function loadJson(input: string, label: string): unknown {
   if (existsSync(input)) {
     const content = readFileSync(input, 'utf8')
     try {

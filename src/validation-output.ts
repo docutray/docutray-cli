@@ -4,11 +4,15 @@ function plural(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? '' : 's'}`
 }
 
-function formatIssue(issue: ValidationIssue): string {
+// Only `message` and `severity` are guaranteed: summaries from API deployments
+// that predate structured issues carry nothing else.
+type DisplayIssue = Partial<ValidationIssue> & Pick<ValidationIssue, 'message' | 'severity'>
+
+function formatIssue(issue: DisplayIssue): string {
   const icon = issue.severity === 'error' ? '\u2717' : '\u26a0'
-  const field = issue.field === '' ? '(root)' : issue.field
+  const field = issue.field === undefined ? '' : `${issue.field === '' ? '(root)' : issue.field}: `
   const origin = [issue.code, issue.rule ? `${issue.source}: ${issue.rule}` : issue.source].filter(Boolean).join(', ')
-  return `  ${icon} ${field}: ${issue.message} [${origin}]`
+  return `  ${icon} ${field}${issue.message}${origin ? ` [${origin}]` : ''}`
 }
 
 /**
@@ -16,7 +20,7 @@ function formatIssue(issue: ValidationIssue): string {
  * one line per issue. Shared by the validation of a conversion and the
  * dry-run of DSL rules.
  */
-export function formatValidationOutcome(outcome: {issues: ValidationIssue[]; valid: boolean}): string[] {
+export function formatValidationOutcome(outcome: {issues: DisplayIssue[]; valid: boolean}): string[] {
   const errors = outcome.issues.filter((i) => i.severity === 'error').length
   const warnings = outcome.issues.length - errors
   const counts = `${plural(errors, 'error')}, ${plural(warnings, 'warning')}`

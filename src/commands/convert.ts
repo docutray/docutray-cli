@@ -1,11 +1,12 @@
 import {Args, Flags} from '@oclif/core'
-import type {ConvertParams} from 'docutray'
+import type {ConversionValidation, ConvertParams} from 'docutray'
 import {readFileSync} from 'node:fs'
 import {basename} from 'node:path'
 
 import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
-import {isStderrInteractive, outputError, outputJson, outputWarning, setForceJson} from '../output.js'
+import {isInteractive, isStderrInteractive, outputError, outputJson, outputWarning, setForceJson} from '../output.js'
+import {formatConversionValidation} from '../validation-output.js'
 import {parseJsonFlag, validateSource} from '../validators.js'
 
 export default class Convert extends BaseCommand {
@@ -85,14 +86,30 @@ export default class Convert extends BaseCommand {
           throw error
         }
 
-        outputJson(result)
+        outputConversion(result)
       } else {
         const result = await client.convert.run(params)
-        outputJson(result)
+        outputConversion(result)
       }
     } catch (error) {
       outputError(error)
       this.exit(1)
     }
+  }
+}
+
+// In a TTY the validation is shown as a readable block after the result
+// instead of inside the JSON; piped output keeps the API body unchanged.
+function outputConversion(result: {validation?: ConversionValidation}): void {
+  if (!isInteractive()) {
+    outputJson(result)
+    return
+  }
+
+  const {validation, ...rest} = result
+  outputJson(rest)
+  const lines = formatConversionValidation(validation)
+  if (lines.length > 0) {
+    process.stdout.write('\n' + lines.join('\n') + '\n')
   }
 }

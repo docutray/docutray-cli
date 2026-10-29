@@ -183,6 +183,43 @@ describe('convert --async', () => {
     exitSpy.mockRestore()
   })
 
+  it('keeps validation inside the JSON when piped', async () => {
+    const client = mockClient()
+    const validation = {valid: true, errors: [], warnings: []}
+    client.convert.run.mockResolvedValue({data: {total: 1}, validation})
+
+    await Convert.run(['file.pdf', '-t', 'inv'])
+
+    const output = JSON.parse(stdoutSpy.mock.calls.map((c: any) => c[0]).join(''))
+    expect(output).toEqual({data: {total: 1}, validation})
+  })
+
+  it('shows the validation as a block after the result in a TTY', async () => {
+    const original = process.stdout.isTTY
+    Object.defineProperty(process.stdout, 'isTTY', {value: true, writable: true})
+    try {
+      const client = mockClient()
+      client.convert.run.mockResolvedValue({
+        data: {total: 1},
+        validation: {
+          valid: false,
+          errors: [{field: 'total', code: 'VALIDATION_ERROR', message: 'total muy bajo', severity: 'error', source: 'rule', rule: 'min_total'}],
+          warnings: [],
+        },
+      })
+
+      await Convert.run(['file.pdf', '-t', 'inv'])
+
+      const output = stdoutSpy.mock.calls.map((c: any) => c[0]).join('')
+      expect(output).toContain('"total": 1')
+      expect(output).not.toContain('"validation"')
+      expect(output).toContain('Validation:  \u2717 invalid (1 error, 0 warnings)')
+      expect(output).toContain('\u2717 total: total muy bajo [VALIDATION_ERROR, rule: min_total]')
+    } finally {
+      Object.defineProperty(process.stdout, 'isTTY', {value: original, writable: true})
+    }
+  })
+
   it('includes conversion_id in JSON status output', async () => {
     const client = mockClient()
     client.mockWait.mockImplementation(async (opts: any) => {

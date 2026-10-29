@@ -1,3 +1,4 @@
+import {DSLValidationError} from 'docutray'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 import {isInteractive, outputError, outputJson, outputKeyValue, outputList, outputSuccess, outputWarning, setForceJson} from '../src/output.js'
@@ -126,6 +127,33 @@ describe('output', () => {
       expect(stderrSpy).toHaveBeenCalledWith(
         expect.stringContaining('"error": "forced json error"'),
       )
+
+      Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
+    })
+  })
+
+  describe('outputError with DSL diagnostics', () => {
+    const diagnostics = [
+      {column: 7, line: 2, message: 'se esperaba una expresión'},
+      {column: 1, line: 5, message: 'operador desconocido'},
+    ]
+    const dslError = () =>
+      new DSLValidationError(400, {diagnostics, error: 'Invalid DSL rules'}, 'Invalid DSL rules', new Headers(), diagnostics)
+
+    it('includes the diagnostics in JSON output', () => {
+      outputError(dslError())
+      const output = JSON.parse(stderrSpy.mock.calls.map((c: any) => c[0]).join(''))
+      expect(output).toEqual({diagnostics, error: 'Invalid DSL rules', status: 400})
+    })
+
+    it('lists line and column of each diagnostic in a TTY', () => {
+      const original = process.stderr.isTTY
+      Object.defineProperty(process.stderr, 'isTTY', {value: true, writable: true})
+
+      outputError(dslError())
+      expect(stderrSpy).toHaveBeenCalledWith('\u2717 Error: Invalid DSL rules (400)\n')
+      expect(stderrSpy).toHaveBeenCalledWith('  line 2, column 7: se esperaba una expresión\n')
+      expect(stderrSpy).toHaveBeenCalledWith('  line 5, column 1: operador desconocido\n')
 
       Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
     })
