@@ -257,7 +257,8 @@ USAGE
 
 ARGUMENTS
   CODE     Document type code
-  [RULES]  DSL rules: file path, "-" to read from stdin, or inline text
+  [RULES]  DSL rules: file path, "-" to read from stdin, or inline text. A value that looks like a path (no spaces, with
+           / or a .dsl/.txt extension) must exist
 
 FLAGS
   --clear  Remove all DSL rules from the document type
@@ -301,7 +302,8 @@ ARGUMENTS
 FLAGS
   --data=<value>   (required) Document data to validate: JSON file path, inline JSON, or "-" for stdin
   --json           Output as JSON (default when piped)
-  --rules=<value>  DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text
+  --rules=<value>  DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text. A value that
+                   looks like a path (no spaces, with / or a .dsl/.txt extension) must exist
 
 DESCRIPTION
   Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the

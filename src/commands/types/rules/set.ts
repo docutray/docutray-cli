@@ -9,7 +9,7 @@ import {readRulesInput} from '../../../rules-input.js'
 export default class TypesRulesSet extends BaseCommand {
   static args = {
     code: Args.string({description: 'Document type code', required: true}),
-    rules: Args.string({description: 'DSL rules: file path, "-" to read from stdin, or inline text'}),
+    rules: Args.string({description: 'DSL rules: file path, "-" to read from stdin, or inline text. A value that looks like a path (no spaces, with / or a .dsl/.txt extension) must exist'}),
   }
 
   static description = `Save the DSL business rules of a document type, replacing the stored ones. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.`

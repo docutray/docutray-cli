@@ -60,6 +60,25 @@ describe('types rules set', () => {
     expect(client.documentTypes.update).toHaveBeenCalledWith(TYPE_ID, {dslRules: 'field.total greaterThan 5'})
   })
 
+  it.each(['rules.dsl', 'rules/invoice', './rules.txt'])('fails with file not found for a missing path (%s)', async (path) => {
+    const client = rulesClient()
+    mockCreateClient.mockReturnValue(client as never)
+
+    await expect(TypesRulesSet.run(['invoice', path])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining(`File not found: ${path}`))
+    expect(client.documentTypes.update).not.toHaveBeenCalled()
+  })
+
+  it('sends inline rules that contain a slash', async () => {
+    const client = rulesClient()
+    mockCreateClient.mockReturnValue(client as never)
+
+    await TypesRulesSet.run(['invoice', 'field.url matches("^https://")'])
+
+    expect(client.documentTypes.update).toHaveBeenCalledWith(TYPE_ID, {dslRules: 'field.url matches("^https://")'})
+  })
+
   it('clears the rules with --clear', async () => {
     const client = rulesClient()
     mockCreateClient.mockReturnValue(client as never)

@@ -24,7 +24,7 @@ export default class TypesRulesTest extends BaseCommand {
   static flags = {
     data: Flags.string({description: 'Document data to validate: JSON file path, inline JSON, or "-" for stdin', required: true}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
-    rules: Flags.string({description: 'DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text'}),
+    rules: Flags.string({description: 'DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text. A value that looks like a path (no spaces, with / or a .dsl/.txt extension) must exist'}),
   }
 
   async run(): Promise<void> {

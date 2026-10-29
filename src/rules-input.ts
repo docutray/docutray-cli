@@ -6,12 +6,21 @@ function readStdin(): string {
   return readFileSync(0, 'utf8')
 }
 
+// A single token with a path separator or a rules-file extension is a file
+// path, not DSL: rules always have whitespace between field and operator.
+function looksLikePath(input: string): boolean {
+  return !/\s/.test(input) && (input.includes('/') || /\.(dsl|txt)$/i.test(input))
+}
+
 /**
- * Resolves DSL rules given as `-` (stdin), a file path, or inline text.
+ * Resolves DSL rules given as `-` (stdin), a file path, or inline text. A
+ * value that looks like a path but does not exist fails instead of being sent
+ * as rules.
  */
 export function readRulesInput(input: string): string {
   if (input === '-') return readStdin()
   if (existsSync(input)) return readFileSync(input, 'utf8')
+  if (looksLikePath(input)) throw new Error(`File not found: ${input}`)
   return input
 }
 

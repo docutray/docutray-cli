@@ -91,6 +91,16 @@ describe('types rules test', () => {
     expect(client.documentTypes.validate).not.toHaveBeenCalled()
   })
 
+  it('fails with file not found when --rules looks like a missing path', async () => {
+    const client = rulesClient()
+    mockCreateClient.mockReturnValue(client as never)
+
+    await expect(TypesRulesTest.run(['invoice', '--data', '{}', '--rules', 'missing.dsl'])).rejects.toThrow('EXIT')
+
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('File not found: missing.dsl'))
+    expect(client.documentTypes.validate).not.toHaveBeenCalled()
+  })
+
   it('rejects reading both --data and --rules from stdin', async () => {
     mockCreateClient.mockReturnValue(rulesClient() as never)
     await expect(TypesRulesTest.run(['invoice', '--data', '-', '--rules', '-'])).rejects.toThrow('EXIT')
