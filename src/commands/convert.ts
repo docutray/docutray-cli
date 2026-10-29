@@ -79,7 +79,7 @@ export default class Convert extends BaseCommand {
           const msg = error instanceof Error ? error.message : String(error)
           const isTimeout = msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('timed out')
           if (isTimeout) {
-            throw new Error(`${msg} (conversionId: ${conversionId}). Use the conversion ID to check status later.`)
+            throw new Error(`${msg} (conversionId: ${conversionId}). Check it later with "docutray convert status ${conversionId}".`)
           }
 
           throw error

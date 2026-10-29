@@ -35,6 +35,12 @@ docutray convert large-document.pdf --type electronic-invoice --async
 # Final result is written to stdout
 ```
 
+If polling times out, the conversion keeps running on the server. Check it later with its conversion ID:
+
+```bash
+docutray convert status conv_abc123
+```
+
 ### Webhooks
 
 Instead of polling, you can receive a notification when processing completes. Webhooks are configured per organization in DocuTray, not per request.

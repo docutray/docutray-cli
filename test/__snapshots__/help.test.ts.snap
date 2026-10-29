@@ -54,6 +54,13 @@ EXAMPLES
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/convert
 
+COMMANDS
+  convert status
+      Query the status of a conversion by its conversion ID. Use this to check on
+      a conversion started with --async after a timeout, or to retrieve its result
+      later. Returns the conversion status, the extracted data and its validation
+      against the document type's JSON Schema and DSL rules when complete.
+
 "
 `;
 

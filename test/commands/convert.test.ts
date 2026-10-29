@@ -144,7 +144,7 @@ describe('convert --async', () => {
 
     await expect(Convert.run(['file.pdf', '-t', 'inv', '--async', '--json'])).rejects.toThrow('EXIT')
     expect(stderrSpy).toHaveBeenCalledWith(
-      expect.stringContaining('conv_abc123'),
+      expect.stringContaining('docutray convert status conv_abc123'),
     )
     exitSpy.mockRestore()
   })

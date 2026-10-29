@@ -4,6 +4,7 @@
 Convert a document to structured data using a specified document type schema. Accepts a local file path or a public URL as the source. By default, processing is synchronous — the command waits and returns the extracted data. Use --async for long-running documents to poll for completion with status updates on stderr.
 
 * [`docutray convert SOURCE`](#docutray-convert-source)
+* [`docutray convert status CONVERSION-ID`](#docutray-convert-status-conversion-id)
 
 ## `docutray convert SOURCE`
 
@@ -54,3 +55,41 @@ DOCUMENTATION
 ```
 
 _See code: [src/commands/convert.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/convert.ts)_
+
+## `docutray convert status CONVERSION-ID`
+
+Query the status of a conversion by its conversion ID. Use this to check on a conversion started with --async after a timeout, or to retrieve its result later. Returns the conversion status, the extracted data and its validation against the document type's JSON Schema and DSL rules when complete.
+
+```
+USAGE
+  $ docutray convert:status CONVERSION-ID [--json]
+
+ARGUMENTS
+  CONVERSION-ID  Conversion ID returned by "convert --async"
+
+FLAGS
+  --json  Output as JSON (default when piped)
+
+DESCRIPTION
+  Query the status of a conversion by its conversion ID. Use this to check on a conversion started with --async after a
+  timeout, or to retrieve its result later. Returns the conversion status, the extracted data and its validation against
+  the document type's JSON Schema and DSL rules when complete.
+
+EXAMPLES
+  Check the status of a conversion
+
+    $ docutray convert status conv_abc123
+
+  Output as JSON
+
+    $ docutray convert status conv_abc123 --json
+
+  Show only the validation of the extracted data
+
+    $ docutray convert status conv_abc123 | jq .validation
+
+DOCUMENTATION
+  Learn more: https://docs.docutray.com/cli/convert/status
+```
+
+_See code: [src/commands/convert/status.ts](https://github.com/docutray/docutray-cli/blob/v0.5.1/src/commands/convert/status.ts)_
