@@ -290,7 +290,7 @@ _See code: [src/commands/types/rules/set.ts](https://github.com/docutray/docutra
 
 ## `docutray types rules test CODE`
 
-Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exits with code 1 when the data is invalid, so it can gate scripts and CI.
+Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exit codes: 0 when the data is valid, 1 when it is invalid, 2 on any other error (API, rules that fail to compile, invalid input), so it can gate scripts and CI.
 
 ```
 USAGE
@@ -307,8 +307,9 @@ FLAGS
 
 DESCRIPTION
   Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the
-  stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exits with
-  code 1 when the data is invalid, so it can gate scripts and CI.
+  stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exit codes:
+  0 when the data is valid, 1 when it is invalid, 2 on any other error (API, rules that fail to compile, invalid input),
+  so it can gate scripts and CI.
 
 EXAMPLES
   Validate data against the stored rules

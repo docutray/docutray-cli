@@ -313,8 +313,14 @@ docutray types rules get invoice --raw > rules.dsl  # save only the rules text
 ### Testing rules without saving them
 
 `types rules test` validates data against the JSON Schema and the rules. With
-`--rules` it uses the given rules instead of the stored ones (dry-run). It exits
-with code 1 when the data is invalid, so it can gate scripts and CI.
+`--rules` it uses the given rules instead of the stored ones (dry-run). Exit
+codes, so it can gate scripts and CI:
+
+| Code | Meaning |
+|---|---|
+| 0 | The data is valid (warnings do not make it invalid) |
+| 1 | The data is invalid |
+| 2 | Any other error: API, rules that fail to compile, invalid input |
 
 ```bash
 # Against the stored rules

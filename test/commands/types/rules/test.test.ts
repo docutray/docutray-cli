@@ -1,6 +1,7 @@
 import {mkdtempSync, rmSync, writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
+import {DSLValidationError} from 'docutray'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 vi.mock('../../../../src/client.js', () => ({
@@ -89,6 +90,7 @@ describe('types rules test', () => {
 
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid --data'))
     expect(client.documentTypes.validate).not.toHaveBeenCalled()
+    expect(exitSpy).toHaveBeenCalledWith(2)
   })
 
   it('fails with file not found when --rules looks like a missing path', async () => {
@@ -99,12 +101,43 @@ describe('types rules test', () => {
 
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('File not found: missing.dsl'))
     expect(client.documentTypes.validate).not.toHaveBeenCalled()
+    expect(exitSpy).toHaveBeenCalledWith(2)
   })
 
   it('rejects reading both --data and --rules from stdin', async () => {
     mockCreateClient.mockReturnValue(rulesClient() as never)
     await expect(TypesRulesTest.run(['invoice', '--data', '-', '--rules', '-'])).rejects.toThrow('EXIT')
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Only one of --data and --rules'))
+    expect(exitSpy).toHaveBeenCalledWith(2)
+  })
+
+  it('exits 2 when the rules fail to compile', async () => {
+    const client = rulesClient()
+    const diagnostics = [{column: 13, line: 1, message: 'se esperaba un valor'}]
+    client.documentTypes.validate.mockRejectedValue(
+      new DSLValidationError(400, {diagnostics, error: 'Invalid DSL rules'}, 'Invalid DSL rules', new Headers(), diagnostics),
+    )
+    mockCreateClient.mockReturnValue(client as never)
+
+    await expect(TypesRulesTest.run(['invoice', '--data', '{}', '--rules', 'field.total greaterThan'])).rejects.toThrow('EXIT')
+
+    expect(exitSpy).toHaveBeenCalledWith(2)
+    expect(exitSpy).not.toHaveBeenCalledWith(1)
+  })
+
+  it('exits 2 on an API error', async () => {
+    const client = rulesClient()
+    client.documentTypes.validate.mockRejectedValue(new Error('Internal server error'))
+    mockCreateClient.mockReturnValue(client as never)
+
+    await expect(TypesRulesTest.run(['invoice', '--data', '{}'])).rejects.toThrow('EXIT')
+
+    expect(exitSpy).toHaveBeenCalledWith(2)
+  })
+
+  it('exits 2 when --data is missing', async () => {
+    await expect(TypesRulesTest.run(['invoice'])).rejects.toThrow('EXIT')
+    expect(exitSpy).toHaveBeenCalledWith(2)
   })
 
   describe('in a TTY', () => {

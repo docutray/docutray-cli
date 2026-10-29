@@ -13,7 +13,7 @@ export default class TypesRulesTest extends BaseCommand {
     code: Args.string({description: 'Document type code', required: true}),
   }
 
-  static description = `Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exits with code 1 when the data is invalid, so it can gate scripts and CI.`
+  static description = `Validate document data against a document type's JSON Schema and DSL rules without saving anything. By default the stored rules are used; pass --rules to try new rules (dry-run) before saving them with "types rules set". Exit codes: 0 when the data is valid, 1 when it is invalid, 2 on any other error (API, rules that fail to compile, invalid input), so it can gate scripts and CI.`
 
   static examples = [
     {command: '<%= config.bin %> types rules test invoice --data extracted.json', description: 'Validate data against the stored rules'},
@@ -26,6 +26,8 @@ export default class TypesRulesTest extends BaseCommand {
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
     rules: Flags.string({description: 'DSL rules to test instead of the stored ones: file path, "-" for stdin, or inline text. A value that looks like a path (no spaces, with / or a .dsl/.txt extension) must exist'}),
   }
+
+  protected inputErrorExitCode = 2
 
   async run(): Promise<void> {
     const {args, flags} = await this.parse(TypesRulesTest)
@@ -52,7 +54,7 @@ export default class TypesRulesTest extends BaseCommand {
       }
     } catch (error) {
       outputError(error)
-      this.exit(1)
+      this.exit(2)
     }
 
     if (!valid) this.exit(1)

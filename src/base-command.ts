@@ -4,6 +4,9 @@ import DocuTrayHelp from './help.js'
 import {isStderrInteractive, outputError} from './output.js'
 
 export abstract class BaseCommand extends Command {
+  /** Exit code for a missing arg or flag; commands that reserve 1 for another outcome override it. */
+  protected inputErrorExitCode = 1
+
   protected async catch(err: Error & {code?: string}): Promise<void> {
     const isMissingInput =
       err instanceof Errors.CLIError &&
@@ -25,7 +28,7 @@ export abstract class BaseCommand extends Command {
         outputError(err)
       }
 
-      this.exit(1)
+      this.exit(this.inputErrorExitCode)
       return
     }
 
