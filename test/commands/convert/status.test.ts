@@ -90,10 +90,10 @@ describe('convert status', () => {
       await ConvertStatus.run(['conv_abc123'])
 
       expect(stdout()).toContain('Conversion ID:  conv_abc123')
-      expect(stdout()).toContain('✓ Status:  SUCCESS')
-      expect(stdout()).toContain('Validation:  ✗ invalid (1 error, 1 warning)')
-      expect(stdout()).toContain('✗ total: total debe ser mayor a 1000 [VALIDATION_ERROR, rule: min_total]')
-      expect(stdout()).toContain('⚠ (root): falta la fecha [MISSING_FIELD, schema]')
+      expect(stdout()).toContain('\u2713 Status:  SUCCESS')
+      expect(stdout()).toContain('Validation:  \u2717 invalid (1 error, 1 warning)')
+      expect(stdout()).toContain('\u2717 total: total debe ser mayor a 1000 [VALIDATION_ERROR, rule: min_total]')
+      expect(stdout()).toContain('\u26a0 (root): falta la fecha [MISSING_FIELD, schema]')
       expect(stdout()).toContain('"total": 100')
     })
 
@@ -106,14 +106,14 @@ describe('convert status', () => {
     it('shows a validation that could not be completed', async () => {
       mockClient({...successStatus, validation: {status: 'error'}})
       await ConvertStatus.run(['conv_abc123'])
-      expect(stdout()).toContain('Validation:  ⚠ could not be completed')
+      expect(stdout()).toContain('Validation:  \u26a0 could not be completed')
     })
 
     it('omits the validation block when the API does not send it', async () => {
       const {validation: _validation, ...withoutValidation} = successStatus
       mockClient({...withoutValidation, status: 'PROCESSING', data: null})
       await ConvertStatus.run(['conv_abc123'])
-      expect(stdout()).toContain('○ Status:  PROCESSING')
+      expect(stdout()).toContain('\u25cb Status:  PROCESSING')
       expect(stdout()).not.toContain('Validation:')
       expect(stdout()).not.toContain('Data:')
     })
@@ -121,7 +121,7 @@ describe('convert status', () => {
     it('shows the error of a failed conversion', async () => {
       mockClient({...successStatus, status: 'ERROR', data: null, validation: undefined, error: 'Document unreadable'})
       await ConvertStatus.run(['conv_abc123'])
-      expect(stdout()).toContain('✗ Status:  ERROR')
+      expect(stdout()).toContain('\u2717 Status:  ERROR')
       expect(stdout()).toContain('Error:  Document unreadable')
     })
   })

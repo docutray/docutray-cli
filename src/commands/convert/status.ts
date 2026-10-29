@@ -35,7 +35,7 @@ export default class ConvertStatus extends BaseCommand {
         return
       }
 
-      const icon = result.status === 'SUCCESS' ? '✓' : result.status === 'ERROR' ? '✗' : '○'
+      const icon = result.status === 'SUCCESS' ? '\u2713' : result.status === 'ERROR' ? '\u2717' : '\u25cb'
       outputKeyValue(result, [
         {key: 'Conversion ID', value: result.conversion_id || args['conversion-id']},
         {key: 'Status', value: String(result.status), icon},
