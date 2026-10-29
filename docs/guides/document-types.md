@@ -345,7 +345,7 @@ cat rules.dsl | docutray types rules set invoice -   # from stdin
 docutray types rules set invoice --clear      # remove all rules
 ```
 
-Saving replaces the stored rules. Rules that fail to compile are rejected and
+Saving replaces the stored rules. Only your organization's document types can be modified: public platform types can be read with `types rules get` and tested with `types rules test`, but `set` on them fails with 403 or 404. Rules that fail to compile are rejected and
 nothing is saved; the error lists the line and column of each problem
 (`diagnostics` in piped output):
 

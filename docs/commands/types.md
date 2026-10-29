@@ -249,7 +249,7 @@ _See code: [src/commands/types/rules/get.ts](https://github.com/docutray/docutra
 
 ## `docutray types rules set CODE [RULES]`
 
-Save the DSL business rules of a document type, replacing the stored ones. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.
+Save the DSL business rules of a document type of your organization, replacing the stored ones. Public platform types can be read and tested but not modified. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.
 
 ```
 USAGE
@@ -265,9 +265,10 @@ FLAGS
   --json   Output as JSON (default when piped)
 
 DESCRIPTION
-  Save the DSL business rules of a document type, replacing the stored ones. Rules that fail to compile are rejected
-  with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data
-  without saving them, and --clear to remove all rules.
+  Save the DSL business rules of a document type of your organization, replacing the stored ones. Public platform types
+  can be read and tested but not modified. Rules that fail to compile are rejected with their line and column, and
+  nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to
+  remove all rules.
 
 EXAMPLES
   Save rules from a file

@@ -12,7 +12,7 @@ export default class TypesRulesSet extends BaseCommand {
     rules: Args.string({description: 'DSL rules: file path, "-" to read from stdin, or inline text. A value that looks like a path (no spaces, with / or a .dsl/.txt extension) must exist'}),
   }
 
-  static description = `Save the DSL business rules of a document type, replacing the stored ones. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.`
+  static description = `Save the DSL business rules of a document type of your organization, replacing the stored ones. Public platform types can be read and tested but not modified. Rules that fail to compile are rejected with their line and column, and nothing is saved. Use "types rules test" first to try rules against sample data without saving them, and --clear to remove all rules.`
 
   static examples = [
     {command: '<%= config.bin %> types rules set invoice rules.dsl', description: 'Save rules from a file'},
