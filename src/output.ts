@@ -66,6 +66,14 @@ export function outputError(error: unknown): void {
   }
 }
 
+export function outputWarning(message: string): void {
+  if (isStderrInteractive()) {
+    process.stderr.write(`\u26a0 Warning: ${message}\n`)
+  } else {
+    process.stderr.write(JSON.stringify({warning: message}) + '\n')
+  }
+}
+
 export function outputTable(rows: Record<string, unknown>[], columns: string[]): void {
   if (rows.length === 0) {
     process.stdout.write('No results found.\n')

@@ -58,18 +58,20 @@ describe('convert validation', () => {
     exitSpy.mockRestore()
   })
 
-  it('rejects invalid --webhook-url', async () => {
-    mockClient()
-    await expect(Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'not-a-url'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid URL in --webhook-url'))
-    exitSpy.mockRestore()
+  it('warns that --webhook-url has no effect and does not send it', async () => {
+    const client = mockClient()
+    await Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'https://example.com/hook'])
+    expect(stderrSpy).toHaveBeenCalledWith(
+      JSON.stringify({warning: '--webhook-url has no effect and will be removed; webhooks are configured per organization'}) + '\n',
+    )
+    expect(client.convert.run).toHaveBeenCalledWith(expect.not.objectContaining({webhookUrl: expect.anything()}))
   })
 
-  it('rejects non-http protocol in --webhook-url', async () => {
+  it('does not warn when --webhook-url is omitted', async () => {
     mockClient()
-    await expect(Convert.run(['file.pdf', '-t', 'inv', '--webhook-url', 'ftp://example.com'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('must use http or https protocol'))
-    exitSpy.mockRestore()
+    await Convert.run(['file.pdf', '-t', 'inv'])
+    const stderr = stderrSpy.mock.calls.map((c: any) => c[0]).join('')
+    expect(stderr).not.toContain('webhook-url')
   })
 
   it('rejects nonexistent source file', async () => {

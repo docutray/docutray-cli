@@ -5,8 +5,8 @@ import {basename} from 'node:path'
 
 import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
-import {isStderrInteractive, outputError, outputJson, setForceJson} from '../output.js'
-import {parseJsonFlag, validateSource, validateUrl} from '../validators.js'
+import {isStderrInteractive, outputError, outputJson, outputWarning, setForceJson} from '../output.js'
+import {parseJsonFlag, validateSource} from '../validators.js'
 
 export default class Convert extends BaseCommand {
   static args = {
@@ -20,7 +20,6 @@ export default class Convert extends BaseCommand {
     {command: '<%= config.bin %> convert https://example.com/doc.pdf -t electronic-invoice', description: 'Convert a document from a URL'},
     {command: '<%= config.bin %> convert invoice.pdf -t electronic-invoice --async', description: 'Use async processing with status polling'},
     {command: '<%= config.bin %> convert large-doc.pdf -t electronic-invoice --async --timeout 600', description: 'Async with 10-minute timeout for large documents'},
-    {command: '<%= config.bin %> convert receipt.jpg -t receipt --webhook-url https://example.com/hook', description: 'Convert with webhook notification on completion'},
     {command: '<%= config.bin %> convert invoice.pdf -t electronic-invoice --metadata \'{"ref":"order-123"}\'', description: 'Attach custom metadata to the conversion'},
   ]
 
@@ -30,7 +29,8 @@ export default class Convert extends BaseCommand {
     metadata: Flags.string({description: 'JSON metadata to attach to the conversion (e.g. \'{"key":"value"}\')'}),
     timeout: Flags.integer({default: 300, description: 'Polling timeout in seconds for async processing', min: 1}),
     type: Flags.string({char: 't', description: 'Document type code to use for extraction (see: docutray types list)', required: true}),
-    'webhook-url': Flags.string({description: 'Webhook URL to receive a POST notification when conversion completes'}),
+    // Deprecated: the API never read it. Remove in the next minor release.
+    'webhook-url': Flags.string({description: 'Deprecated, has no effect: webhooks are configured per organization', hidden: true}),
   }
 
   async run(): Promise<void> {
@@ -41,9 +41,12 @@ export default class Convert extends BaseCommand {
       const client = createClient()
       const {isUrl} = validateSource(args.source)
 
+      if (flags['webhook-url'] !== undefined) {
+        outputWarning('--webhook-url has no effect and will be removed; webhooks are configured per organization')
+      }
+
       const params: ConvertParams = {
         documentTypeCode: flags.type,
-        ...(flags['webhook-url'] && {webhookUrl: validateUrl(flags['webhook-url'], '--webhook-url')}),
         ...(flags.metadata && {documentMetadata: parseJsonFlag(flags.metadata, '--metadata')}),
         ...(isUrl
           ? {url: args.source}

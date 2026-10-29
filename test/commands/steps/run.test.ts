@@ -81,16 +81,15 @@ describe('steps run', () => {
     )
   })
 
-  it('passes webhook URL when provided', async () => {
+  it('warns that --webhook-url has no effect and does not send it', async () => {
     const {client} = mockClient()
 
     await StepsRun.run(['my-step', 'doc.pdf', '--webhook-url', 'https://hook.example.com'])
 
-    expect(client.steps.runAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        webhookUrl: 'https://hook.example.com',
-      }),
+    expect(stderrSpy).toHaveBeenCalledWith(
+      JSON.stringify({warning: '--webhook-url has no effect and will be removed; webhooks are configured per organization'}) + '\n',
     )
+    expect(client.steps.runAsync).toHaveBeenCalledWith(expect.not.objectContaining({webhookUrl: expect.anything()}))
   })
 
   it('returns immediately with --no-wait', async () => {
@@ -170,17 +169,6 @@ describe('steps run', () => {
 
     await expect(StepsRun.run(['my-step', 'doc.pdf', '--metadata', 'not-json'])).rejects.toThrow('EXIT')
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid JSON in --metadata'))
-    exitSpy.mockRestore()
-  })
-
-  it('rejects invalid --webhook-url', async () => {
-    mockClient()
-    const exitSpy = vi.spyOn(StepsRun.prototype, 'exit').mockImplementation(() => {
-      throw new Error('EXIT')
-    })
-
-    await expect(StepsRun.run(['my-step', 'doc.pdf', '--webhook-url', 'not-a-url'])).rejects.toThrow('EXIT')
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('Invalid URL in --webhook-url'))
     exitSpy.mockRestore()
   })
 

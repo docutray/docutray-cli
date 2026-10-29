@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
-import {isInteractive, outputError, outputJson, outputKeyValue, outputList, outputSuccess, setForceJson} from '../src/output.js'
+import {isInteractive, outputError, outputJson, outputKeyValue, outputList, outputSuccess, outputWarning, setForceJson} from '../src/output.js'
 
 describe('output', () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>
@@ -127,6 +127,22 @@ describe('output', () => {
         expect.stringContaining('"error": "forced json error"'),
       )
 
+      Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
+    })
+  })
+
+  describe('outputWarning', () => {
+    it('writes a JSON warning to stderr when not a TTY', () => {
+      outputWarning('careful')
+      expect(stderrSpy).toHaveBeenCalledWith('{"warning":"careful"}\n')
+      expect(stdoutSpy).not.toHaveBeenCalled()
+    })
+
+    it('writes a human warning to stderr in a TTY', () => {
+      const original = process.stderr.isTTY
+      Object.defineProperty(process.stderr, 'isTTY', {value: true, writable: true})
+      outputWarning('careful')
+      expect(stderrSpy).toHaveBeenCalledWith('\u26a0 Warning: careful\n')
       Object.defineProperty(process.stderr, 'isTTY', {value: original, writable: true})
     })
   })

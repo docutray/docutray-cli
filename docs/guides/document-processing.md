@@ -37,11 +37,9 @@ docutray convert large-document.pdf --type electronic-invoice --async
 
 ### Webhooks
 
-Instead of polling, you can receive a notification when processing completes:
+Instead of polling, you can receive a notification when processing completes. Webhooks are configured per organization in DocuTray, not per request.
 
-```bash
-docutray convert invoice.pdf --type electronic-invoice --webhook-url https://example.com/hooks/docutray
-```
+> `--webhook-url` on `convert` and `steps run` is deprecated and has no effect: the API never read it. Passing it prints a warning on stderr, and it will be removed in the next minor release.
 
 ### Attaching metadata
 

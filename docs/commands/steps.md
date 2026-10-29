@@ -12,17 +12,16 @@ Execute a processing step on a document. Steps are reusable processing pipelines
 
 ```
 USAGE
-  $ docutray steps:run STEP-ID SOURCE [--json] [--metadata <value>] [--no-wait] [--webhook-url <value>]
+  $ docutray steps:run STEP-ID SOURCE [--json] [--metadata <value>] [--no-wait]
 
 ARGUMENTS
   STEP-ID  Step ID to execute
   SOURCE   File path or URL to process
 
 FLAGS
-  --json                 Output as JSON (default when piped)
-  --metadata=<value>     JSON metadata to attach to the execution (e.g. '{"key":"value"}')
-  --no-wait              Return immediately with execution status instead of waiting for completion (default: false)
-  --webhook-url=<value>  Webhook URL to receive a POST notification when the step completes
+  --json              Output as JSON (default when piped)
+  --metadata=<value>  JSON metadata to attach to the execution (e.g. '{"key":"value"}')
+  --no-wait           Return immediately with execution status instead of waiting for completion (default: false)
 
 DESCRIPTION
   Execute a processing step on a document. Steps are reusable processing pipelines configured in the DocuTray dashboard.
@@ -45,10 +44,6 @@ EXAMPLES
   Attach custom metadata to the execution
 
     $ docutray steps run extract-fields invoice.pdf --metadata '{"ref":"order-123"}'
-
-  Receive a webhook notification on completion
-
-    $ docutray steps run extract-fields invoice.pdf --webhook-url https://example.com/hook
 
 DOCUMENTATION
   Learn more: https://docs.docutray.com/cli/steps/run
