@@ -65,7 +65,7 @@ DOCUMENTATION
 `;
 
 exports[`help output > identify --help output matches snapshot 1`] = `
-"Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
+"Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. By default all document types of your organization are considered; use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
 
 USAGE
   $ docutray identify SOURCE [--async] [--json] [--types <value>]
@@ -78,12 +78,14 @@ FLAGS
                    updates are emitted to stderr.
   --json           Output as JSON (default when piped)
   --types=<value>  Comma-separated list of document type codes to restrict
-                   identification (e.g. invoice,receipt)
+                   identification (e.g. invoice,receipt). Default: all document
+                   types of your organization
 
 DESCRIPTION
   Identify the type of a document by analyzing its content. Returns the
   best-matching document type along with alternative matches ranked by
-  confidence score. Use --types to restrict identification to a specific set of
+  confidence score. By default all document types of your organization are
+  considered; use --types to restrict identification to a specific set of
   document types. Accepts a local file path or a public URL.
 
 EXAMPLES

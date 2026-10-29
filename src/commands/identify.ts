@@ -6,6 +6,7 @@ import {basename} from 'node:path'
 import {BaseCommand} from '../base-command.js'
 import {createClient} from '../client.js'
 import {isStderrInteractive, outputError, outputJson, outputList, setForceJson} from '../output.js'
+import {listAllDocumentTypeCodes} from '../resolve-type.js'
 import {validateSource} from '../validators.js'
 
 export default class Identify extends BaseCommand {
@@ -13,7 +14,7 @@ export default class Identify extends BaseCommand {
     source: Args.string({description: 'File path or URL to identify', required: true}),
   }
 
-  static description = `Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.`
+  static description = `Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. By default all document types of your organization are considered; use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.`
 
   static examples = [
     {command: '<%= config.bin %> identify document.pdf', description: 'Identify a local document'},
@@ -26,7 +27,7 @@ export default class Identify extends BaseCommand {
   static flags = {
     async: Flags.boolean({default: false, description: 'Use async processing with polling (default: false). Status updates are emitted to stderr.'}),
     json: Flags.boolean({default: false, description: 'Output as JSON (default when piped)'}),
-    types: Flags.string({description: 'Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt)'}),
+    types: Flags.string({description: 'Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt). Default: all document types of your organization'}),
   }
 
   async run(): Promise<void> {
@@ -37,8 +38,15 @@ export default class Identify extends BaseCommand {
       const client = createClient()
       const {isUrl} = validateSource(args.source)
 
+      const documentTypeCodeOptions = flags.types
+        ? flags.types.split(',').map((t) => t.trim())
+        : await listAllDocumentTypeCodes(client)
+      if (documentTypeCodeOptions.length === 0) {
+        throw new Error('No document types found in your organization. Create one with "docutray types create" or pass --types.')
+      }
+
       const params: IdentifyParams = {
-        documentTypeCodeOptions: flags.types ? flags.types.split(',').map((t) => t.trim()) : [],
+        documentTypeCodeOptions,
         ...(isUrl
           ? {url: args.source}
           : {file: readFileSync(args.source), filename: basename(args.source)}),

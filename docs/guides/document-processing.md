@@ -55,7 +55,7 @@ Metadata is stored with the conversion result and included in webhook payloads.
 
 ## Identifying documents
 
-The `identify` command analyzes a document and returns the best-matching document type with a confidence score.
+The `identify` command analyzes a document and returns the best-matching document type with a confidence score. By default it considers all document types of your organization.
 
 ```bash
 docutray identify document.pdf
@@ -82,7 +82,7 @@ Output:
 
 ### Restricting to specific types
 
-Narrow identification to a known set of document types:
+Narrow identification to a known set of document types (skips listing the organization's types):
 
 ```bash
 docutray identify document.pdf --types invoice,receipt,contract

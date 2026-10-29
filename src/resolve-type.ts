@@ -32,3 +32,26 @@ export async function resolveDocumentTypeId(client: DocuTray, identifier: string
 
   throw new Error(`Document type "${identifier}" not found`)
 }
+
+/**
+ * Returns the codeType of every document type visible to the organization,
+ * walking all pages of the list endpoint.
+ */
+export async function listAllDocumentTypeCodes(client: DocuTray): Promise<string[]> {
+  const limit = 100
+  const codes: string[] = []
+  let page = 1
+
+  while (true) {
+    const result = await client.documentTypes.list({page, limit})
+    codes.push(...result.data.map((dt: {codeType: string}) => dt.codeType))
+
+    if (result.data.length < limit) {
+      break
+    }
+
+    page += 1
+  }
+
+  return codes
+}

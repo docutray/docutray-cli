@@ -1,13 +1,13 @@
 `docutray identify`
 ===================
 
-Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
+Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. By default all document types of your organization are considered; use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
 
 * [`docutray identify SOURCE`](#docutray-identify-source)
 
 ## `docutray identify SOURCE`
 
-Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
+Identify the type of a document by analyzing its content. Returns the best-matching document type along with alternative matches ranked by confidence score. By default all document types of your organization are considered; use --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
 
 ```
 USAGE
@@ -19,12 +19,13 @@ ARGUMENTS
 FLAGS
   --async          Use async processing with polling (default: false). Status updates are emitted to stderr.
   --json           Output as JSON (default when piped)
-  --types=<value>  Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt)
+  --types=<value>  Comma-separated list of document type codes to restrict identification (e.g. invoice,receipt).
+                   Default: all document types of your organization
 
 DESCRIPTION
   Identify the type of a document by analyzing its content. Returns the best-matching document type along with
-  alternative matches ranked by confidence score. Use --types to restrict identification to a specific set of document
-  types. Accepts a local file path or a public URL.
+  alternative matches ranked by confidence score. By default all document types of your organization are considered; use
+  --types to restrict identification to a specific set of document types. Accepts a local file path or a public URL.
 
 EXAMPLES
   Identify a local document
